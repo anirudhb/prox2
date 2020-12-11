@@ -1,39 +1,9 @@
-import crypto from 'crypto';
-
 import { NextApiRequest, NextApiResponse } from 'next';
-import { approveConfession } from '../../lib/main';
+import { api_config, approveConfession, setupMiddlewares, verifySignature } from '../../lib/main';
 
-import { slack_signing_secret, staging_channel } from '../../secrets';
+import { staging_channel } from '../../secrets';
 
-function verifySignature(req: NextApiRequest): boolean {
-    const timestamp = req.headers['x-slack-request-timestamp'];
-    if (timestamp == undefined || typeof timestamp != 'string') {
-        console.log(`Invalid X-Slack-Request-Timestamp`);
-        return false;
-    }
-    const timestamp_int = parseInt(timestamp, 10);
-    const current_timestamp_int = Math.floor(Date.now() / 1000);
-    if (Math.abs(current_timestamp_int - timestamp_int) > 60 * 5) {
-        // >5min, invalid (possibly replay attack)
-        console.log(`Timestamp is more than 5 minutes from local time, possible replay attack!`);
-        console.log(`Our timestamp was ${current_timestamp_int}; theirs was ${timestamp_int}`);
-        return false;
-    }
-    const sig_base = 'v0:' + timestamp + ':' + JSON.stringify(req.body);
-    const my_sig = 'v0=' + crypto.createHmac('sha256', slack_signing_secret)
-        .update(sig_base)
-        .digest('hex');
-    const slack_sig = req.headers['x-slack-signature'];
-    if (slack_sig == 'undefined' || typeof slack_sig != 'string') {
-        console.log(`Invalid X-Slack-Signature`);
-        return false;
-    }
-    if (!crypto.timingSafeEqual(Buffer.from(my_sig), Buffer.from(slack_sig))) {
-        console.log(`Signatures do not match`);
-        return false;
-    }
-    return true;
-}
+export const config = api_config;
 
 interface UrlVerificationEvent {
     type: 'url_verification';
@@ -60,6 +30,8 @@ type SlackEventPayload = UrlVerificationEvent | {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    await setupMiddlewares(req, res);
+
     console.log(`Event!`);
     console.log(`Validating signature...`);
     const isValid = verifySignature(req);

@@ -15,14 +15,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.writeHead(200).end();
     if (data.text.trim().length <= 0) {
         console.log(`Text is none, sending help!`);
-        return await failRequest(data, 'Uh oh! Try again with a message you\'d like to confess!');
+        return await failRequest(data.response_url, 'Uh oh! Try again with a message you\'d like to confess!');
     }
     try {
         await stageConfession(data.text);
     } catch (e) {
-        return await failRequest(data, e);
+        return await failRequest(data.response_url, e);
     }
     console.log(`Notifying user...`);
-    await succeedRequest(data, 'Your message has been staged and will appear here after review by the confessions team!');
+    await succeedRequest(data.response_url, 'Your message has been staged and will appear here after review by the confessions team!');
     console.log(`Request success`);
 }

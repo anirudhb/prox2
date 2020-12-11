@@ -1,9 +1,55 @@
+import crypto from 'crypto';
+
 import Airtable from 'airtable';
 import { WebClient } from '@slack/web-api';
+import body_parser from 'body-parser';
 
-import { NextApiRequest } from 'next';
+import { NextApiRequest, NextApiResponse, PageConfig } from 'next';
 
-import { token, airtable_api_key, airtable_base, staging_channel, confessions_channel } from '../secrets';
+import { token, airtable_api_key, airtable_base, staging_channel, confessions_channel, slack_signing_secret } from '../secrets';
+
+export const api_config = {
+    api: {
+        bodyParser: false
+    }
+} as PageConfig;
+
+function applyMiddleware<T>(
+    req: NextApiRequest, res: NextApiResponse,
+    fn: (arg0: any, arg1: any, cb: (arg0: T) => void) => T
+): Promise<T> {
+    return new Promise((resolve, reject) => {
+        fn(req, res, (result) => {
+            if (result instanceof Error) {
+                return reject(result)
+            }
+
+            return resolve(result)
+        })
+    })
+}
+
+function rawbody_verify(req: any, _res: any, buf: any, encoding: any) {
+    if (buf && buf.length) {
+        req.rawBody = buf.toString(encoding || 'utf8')
+    }
+}
+
+const parsers = [
+    body_parser.urlencoded({
+        verify: rawbody_verify,
+        extended: false
+    }),
+    body_parser.json({
+        verify: rawbody_verify
+    })
+];
+
+export async function setupMiddlewares(req: NextApiRequest, res: NextApiResponse) {
+    for (const parser of parsers) {
+        await applyMiddleware(req, res, parser);
+    }
+}
 
 export const web = new WebClient(token);
 
@@ -48,6 +94,7 @@ export function isCommandData(x: any): x is CommandData {
 export interface TableRecord {
     id: number;
     approved: boolean;
+    viewed: boolean;
     text: string;
     staging_ts: string;
     published_ts: string;
@@ -61,9 +108,9 @@ export async function validateData(req: NextApiRequest): Promise<CommandData | n
     }
 }
 
-export async function failRequest(data: CommandData, error: string) {
+export async function failRequest(response_url: string, error: string) {
     console.log(`Failing with error: ${error}`);
-    await fetch(data.response_url, {
+    await fetch(response_url, {
         method: 'POST',
         body: JSON.stringify({
             response_type: 'ephemeral',
@@ -72,9 +119,9 @@ export async function failRequest(data: CommandData, error: string) {
     });
 }
 
-export async function succeedRequest(data: CommandData, message: string) {
+export async function succeedRequest(response_url: string, message: string) {
     console.log(`Succeeding with message: ${message}`);
-    await fetch(data.response_url, {
+    await fetch(response_url, {
         method: 'POST',
         body: JSON.stringify({
             response_type: 'ephemeral',
@@ -100,7 +147,51 @@ export async function stageConfession(message: string): Promise<void> {
     const fields = record.fields as TableRecord;
     const staging_message = await web.chat.postMessage({
         channel: staging_channel,
-        text: `(staging) ${fields.id}: ${fields.text}`,
+        text: '',
+        blocks: [
+            {
+                type: "section",
+                text: {
+                    type: "mrkdwn",
+                    text: `(staging) *${fields.id}*: ${fields.text}`
+                }
+            },
+            {
+                type: "actions",
+                elements: [
+                    {
+                        type: "button",
+                        text: {
+                            type: "plain_text",
+                            text: ":true: Approve",
+                            emoji: true
+                        },
+                        value: "approve",
+                        action_id: "approve"
+                    },
+                    {
+                        type: "button",
+                        text: {
+                            type: "plain_text",
+                            text: ":x: Disapprove",
+                            emoji: true
+                        },
+                        value: "disapprove",
+                        action_id: "disapprove"
+                    },
+                    {
+                        type: "button",
+                        text: {
+                            type: "plain_text",
+                            text: "Open in browser",
+                            emoji: true
+                        },
+                        value: "open-in-browser",
+                        action_id: "open-in-browser"
+                    }
+                ]
+            }
+        ]
     });
     if (!staging_message.ok) {
         console.log(`Failed to post message. Rolling back Airtable record...`);
@@ -120,8 +211,8 @@ export async function stageConfession(message: string): Promise<void> {
     console.log(`Updated!`);
 }
 
-export async function approveConfession(staging_ts: string): Promise<void> {
-    console.log(`Approving confession with staging_ts=${staging_ts}...`);
+export async function viewConfession(staging_ts: string, approved: boolean): Promise<void> {
+    console.log(`${approved ? 'Approving' : 'Disapproving'} confession with staging_ts=${staging_ts}...`);
     // Check if message is in Airtable
     let records;
     try {
@@ -135,26 +226,71 @@ export async function approveConfession(staging_ts: string): Promise<void> {
         const record = records[0];
         const fields = record.fields as TableRecord;
         // Publish record and update
-        console.log(`Publishing message...`);
-        const published_message = await web.chat.postMessage({
-            channel: confessions_channel,
-            text: `${fields.id}: ${fields.text}`
-        });
-        if (!published_message.ok) {
-            throw `Failed to publish message!`;
+        let ts = null;
+        if (approved) {
+            console.log(`Publishing message...`);
+            const published_message = await web.chat.postMessage({
+                channel: confessions_channel,
+                text: `*${fields.id}*: ${fields.text}`
+            });
+            if (!published_message.ok) {
+                throw `Failed to publish message!`;
+            }
+            ts = published_message.ts as string;
+            console.log(`Published message!`);
         }
-        console.log(`Published message!`);
         console.log(`Updating Airtable record...`);
         try {
             await record.patchUpdate({
-                approved: true,
-                published_ts: published_message.ts as string
+                approved,
+                viewed: true,
+                published_ts: ts
             } as Partial<TableRecord>);
         } catch (_) {
             throw `Failed to update Airtable record`;
         }
         console.log(`Updated!`);
+        console.log(`Deleting staging message...`);
+        try {
+            await web.chat.delete({
+                channel: staging_channel,
+                ts: staging_ts
+            });
+        } catch (_) {
+            throw `Failed to delete staging message`;
+        }
+        console.log(`Deleted!`);
     } else {
         throw `Failed to find single record with staging_ts=${staging_ts}, got ${records.length}`;
     }
+}
+
+export function verifySignature(req: NextApiRequest): boolean {
+    const timestamp = req.headers['x-slack-request-timestamp'];
+    if (timestamp == undefined || typeof timestamp != 'string') {
+        console.log(`Invalid X-Slack-Request-Timestamp`);
+        return false;
+    }
+    const timestamp_int = parseInt(timestamp, 10);
+    const current_timestamp_int = Math.floor(Date.now() / 1000);
+    if (Math.abs(current_timestamp_int - timestamp_int) > 60 * 5) {
+        // >5min, invalid (possibly replay attack)
+        console.log(`Timestamp is more than 5 minutes from local time, possible replay attack!`);
+        console.log(`Our timestamp was ${current_timestamp_int}; theirs was ${timestamp_int}`);
+        return false;
+    }
+    const sig_base = 'v0:' + timestamp + ':' + (req as unknown as { rawBody: string }).rawBody;
+    const my_sig = 'v0=' + crypto.createHmac('sha256', slack_signing_secret)
+        .update(sig_base)
+        .digest('hex');
+    const slack_sig = req.headers['x-slack-signature'];
+    if (slack_sig == 'undefined' || typeof slack_sig != 'string') {
+        console.log(`Invalid X-Slack-Signature`);
+        return false;
+    }
+    if (!crypto.timingSafeEqual(Buffer.from(my_sig), Buffer.from(slack_sig))) {
+        console.log(`Signatures do not match`);
+        return false;
+    }
+    return true;
 }
