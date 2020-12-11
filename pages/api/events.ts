@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { table, TableRecord, web } from '../../lib/main';
+import { approveConfession } from '../../lib/main';
 
-import { confessions_channel, slack_signing_secret, staging_channel } from '../../token';
+import { slack_signing_secret, staging_channel } from '../../secrets';
 
 function verifySignature(req: NextApiRequest): boolean {
     const timestamp = req.headers['x-slack-request-timestamp'];
@@ -57,7 +57,7 @@ interface ReactionAddedEvent {
 type SlackEventPayload = UrlVerificationEvent | {
     type: 'event_callback';
     event: ReactionAddedEvent;
-}
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     console.log(`Event!`);
@@ -81,44 +81,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.log(`Reaction added!`);
             console.log(`Reaction = ${data.reaction} user = ${data.user} channel = ${data.item.channel} ts = ${data.item.ts}`);
             if (data.reaction == 'true' && data.item.channel == staging_channel) {
-                // Check if message is in Airtable
-                let records;
                 try {
-                    records = await (await table.select({
-                        filterByFormula: `{staging_ts} = ${data.item.ts}`
-                    })).firstPage();
-                } catch (_) {
-                    console.log(`Failed to fetch Airtable record!`);
+                    await approveConfession(data.item.ts);
+                } catch (e) {
+                    console.log(e);
                     res.writeHead(500).end();
                     return;
-                }
-                if (records.length > 0) {
-                    const record = records[0];
-                    const fields = record.fields as TableRecord;
-                    // Publish record and update
-                    console.log(`Publishing message...`);
-                    const published_message = await web.chat.postMessage({
-                        channel: confessions_channel,
-                        text: `${fields.id}: ${fields.text}`
-                    });
-                    if (!published_message.ok) {
-                        console.log(`Failed to publish message!`);
-                        res.writeHead(500).end();
-                        return;
-                    }
-                    console.log(`Published message!`);
-                    console.log(`Updating Airtable record...`);
-                    try {
-                        await record.patchUpdate({
-                            approved: true,
-                            published_ts: published_message.ts as string
-                        } as Partial<TableRecord>);
-                    } catch (_) {
-                        console.log(`Failed to update Airtable record`);
-                        res.writeHead(500).end();
-                        return;
-                    }
-                    console.log(`Updated!`);
                 }
             }
         }

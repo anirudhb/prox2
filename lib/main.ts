@@ -3,7 +3,7 @@ import { WebClient } from '@slack/web-api';
 
 import { NextApiRequest } from 'next';
 
-import { token, airtable_api_key } from '../token';
+import { token, airtable_api_key, airtable_base, staging_channel, confessions_channel } from '../secrets';
 
 export const web = new WebClient(token);
 
@@ -14,7 +14,7 @@ Airtable.configure({
     noRetryIfRateLimited: Airtable.noRetryIfRateLimited
 });
 
-export const base = Airtable.base('appt7EdY82RgaB5SR');
+export const base = Airtable.base(airtable_base);
 export const table = base.table('Main');
 
 export interface CommandData {
@@ -70,4 +70,91 @@ export async function failRequest(data: CommandData, error: string) {
             text: error
         })
     });
+}
+
+export async function succeedRequest(data: CommandData, message: string) {
+    console.log(`Succeeding with message: ${message}`);
+    await fetch(data.response_url, {
+        method: 'POST',
+        body: JSON.stringify({
+            response_type: 'ephemeral',
+            text: message
+        })
+    });
+}
+
+export async function stageConfession(message: string): Promise<void> {
+    console.log(`Staging confession...`);
+    console.log(`Inserting into Airtable...`);
+    let record;
+    try {
+        record = await table.create({
+            text: message,
+            approved: false
+        } as Partial<TableRecord>);
+    } catch (_) {
+        throw 'Failed to insert Airtable record';
+    }
+    console.log(`Inserted!`);
+    console.log(`Posting message to staging channel...`);
+    const fields = record.fields as TableRecord;
+    const staging_message = await web.chat.postMessage({
+        channel: staging_channel,
+        text: `(staging) ${fields.id}: ${fields.text}`,
+    });
+    if (!staging_message.ok) {
+        console.log(`Failed to post message. Rolling back Airtable record...`);
+        await record.destroy();
+        console.log(`Rolled back changes. Notifying user...`);
+        throw 'Failed to post message to staging channel';
+    }
+    console.log(`Posted message!`);
+    console.log(`Updating Airtable record...`);
+    try {
+        await record.patchUpdate({
+            staging_ts: staging_message.ts as string,
+        } as Partial<TableRecord>);
+    } catch (_) {
+        throw 'Failed to update Airtable record';
+    }
+    console.log(`Updated!`);
+}
+
+export async function approveConfession(staging_ts: string): Promise<void> {
+    console.log(`Approving confession with staging_ts=${staging_ts}...`);
+    // Check if message is in Airtable
+    let records;
+    try {
+        records = await (await table.select({
+            filterByFormula: `{staging_ts} = ${staging_ts}`
+        })).firstPage();
+    } catch (_) {
+        throw `Failed to fetch Airtable record!`;
+    }
+    if (records.length == 1) {
+        const record = records[0];
+        const fields = record.fields as TableRecord;
+        // Publish record and update
+        console.log(`Publishing message...`);
+        const published_message = await web.chat.postMessage({
+            channel: confessions_channel,
+            text: `${fields.id}: ${fields.text}`
+        });
+        if (!published_message.ok) {
+            throw `Failed to publish message!`;
+        }
+        console.log(`Published message!`);
+        console.log(`Updating Airtable record...`);
+        try {
+            await record.patchUpdate({
+                approved: true,
+                published_ts: published_message.ts as string
+            } as Partial<TableRecord>);
+        } catch (_) {
+            throw `Failed to update Airtable record`;
+        }
+        console.log(`Updated!`);
+    } else {
+        throw `Failed to find single record with staging_ts=${staging_ts}, got ${records.length}`;
+    }
 }
