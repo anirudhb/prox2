@@ -8,6 +8,8 @@
     "type-check": "tsc"
   },
   "dependencies": {
+    "@slack/web-api": "^5.14.0",
+    "airtable": "^0.10.1",
     "next": "latest",
     "react": "^16.12.0",
     "react-dom": "^16.12.0"
