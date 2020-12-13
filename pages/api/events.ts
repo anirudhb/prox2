@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { api_config, approveConfession, setupMiddlewares, verifySignature } from '../../lib/main';
+import { api_config, setupMiddlewares, verifySignature, web } from '../../lib/main';
 
-import { staging_channel } from '../../secrets';
+import { confessions_channel } from '../../secrets';
 
 export const config = api_config;
 
@@ -11,22 +11,20 @@ interface UrlVerificationEvent {
     challenge: string;
 }
 
-interface ReactionAddedEvent {
-    type: 'reaction_added';
+interface DMEvent {
+    type: 'message';
+    channel_type: 'im';
+    text: string;
     user: string;
-    reaction: string;
-    item_user?: string;
-    item: {
-        type: 'message';
-        channel: string;
-        ts: string;
+    bot_profile?: {
+        app_id: string;
     };
-    event_ts: string;
+    channel: string;
 }
 
 type SlackEventPayload = UrlVerificationEvent | {
     type: 'event_callback';
-    event: ReactionAddedEvent;
+    event: DMEvent;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -49,17 +47,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return;
     } else if (payload.type == 'event_callback') {
         const data = payload.event;
-        if (data.type == 'reaction_added') {
-            console.log(`Reaction added!`);
-            console.log(`Reaction = ${data.reaction} user = ${data.user} channel = ${data.item.channel} ts = ${data.item.ts}`);
-            if (data.reaction == 'true' && data.item.channel == staging_channel) {
-                try {
-                    await approveConfession(data.item.ts);
-                } catch (e) {
-                    console.log(e);
-                    res.writeHead(500).end();
-                    return;
-                }
+        console.log(JSON.stringify(payload.event, null, 2));
+        if (data.type == 'message' && data.channel_type == 'im') {
+            console.log('DM!');
+            if (!data.bot_profile) {
+                await web.chat.postMessage({
+                    channel: data.channel,
+                    text: `Uh oh! You can't DM me! Try typing /prox2 in <#${confessions_channel}> to get started!`,
+                });
             }
         }
     }

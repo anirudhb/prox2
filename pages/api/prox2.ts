@@ -27,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.writeHead(200).end();
     if (data.text.trim().length <= 0) {
         console.log(`Text is none, sending help!`);
-        return await failRequest(data.response_url, 'Uh oh! Try again with a message you\'d like to confess!');
+        return await failRequest(data.response_url, `Uh oh! Try again with a message you\'d like to confess!
+Tip: Draft your confession in a DM so others don\'t see that you\'re typing!`);
     }
     try {
         await stageConfession(data.text, data.user_id);
