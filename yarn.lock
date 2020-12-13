@@ -1512,6 +1512,11 @@ elliptic@^6.5.3:
     minimalistic-assert "^1.0.0"
     minimalistic-crypto-utils "^1.0.0"
 
+emojis-keywords@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/emojis-keywords/-/emojis-keywords-2.0.0.tgz#9d42a916cec88710dab231cddf784c7d1a1e3409"
+  integrity sha1-nUKpFs7IhxDasjHN33hMfRoeNAk=
+
 emojis-list@^2.0.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/emojis-list/-/emojis-list-2.1.0.tgz#4daa4d9db00f9819880c79fa457ae5b09a1fd389"
