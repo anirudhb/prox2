@@ -62,7 +62,7 @@ interface ViewSubmissionInteraction {
                         type: 'plain_text';
                         value: string;
                     } | {
-                        type: 'static_select';
+                        type: 'external_select';
                         selected_option: {
                             value: string;
                         };
@@ -73,7 +73,14 @@ interface ViewSubmissionInteraction {
     };
 }
 
-type SlackInteractionPayload = MessageActionInteraction | ViewSubmissionInteraction | BlockActionInteraction & {
+interface BlockSuggestionInteraction {
+    type: 'block_suggestion';
+    action_id: 'emoji';
+    block_id: 'emoji';
+    value: string;
+}
+
+type SlackInteractionPayload = MessageActionInteraction | ViewSubmissionInteraction | BlockSuggestionInteraction | BlockActionInteraction & {
     type: string;
 };
 
@@ -113,6 +120,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } else {
             console.log(`No action found`);
         }
+    } else if (data.type == 'block_suggestion') {
+        console.log(`Block suggestion!`);
+        // Enumerate emojis to build select box
+        let emojis_list = emojis;
+        const custom_emojis = await web.emoji.list();
+        if (!custom_emojis.ok) throw `Failed to fetch custom emoji`;
+        emojis_list = [...emojis_list, ...Object.keys(custom_emojis.emoji as { [emoji: string]: string }).map(x => `:${x}:`)];
+        emojis_list = emojis_list.filter(emoji => emoji.startsWith(data.value)).slice(0, 100);
+        res.json({
+            options: emojis_list.map(emoji => {
+                return {
+                    text: {
+                        type: 'plain_text',
+                        text: emoji,
+                        emoji: true
+                    },
+                    value: emoji
+                }
+            })
+        });
+        console.log(`Request success`);
+        return;
     } else if (data.type == 'message_action') {
         console.log(`Message action!`);
         try {
@@ -197,13 +226,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     return;
                 }
 
-                // Enumerate emojis to build select box
-                let emojis_list = emojis;
-                const custom_emojis = await web.emoji.list();
-                if (!custom_emojis.ok) throw `Failed to fetch custom emoji`;
-                emojis_list = [...emojis_list, ...Object.keys(custom_emojis.emoji as { [emoji: string]: string }).map(x => `:${x}:`)];
-                emojis_list = emojis_list.slice(0, 100);
-
                 const modal_res = await web.views.open({
                     trigger_id: data.trigger_id,
                     view: {
@@ -233,22 +255,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                                     text: 'Pick an emoji to react with'
                                 },
                                 accessory: {
-                                    type: 'static_select',
+                                    type: 'external_select',
                                     placeholder: {
                                         type: 'plain_text',
                                         text: 'Select an emoji'
                                     },
-                                    options: emojis_list.map(emoji => {
-                                        return {
-                                            text: {
-                                                type: 'plain_text',
-                                                text: emoji,
-                                                emoji: true
-                                            },
-                                            value: emoji
-                                        }
-                                    }),
-                                    action_id: 'emoji'
+                                    action_id: 'emoji',
+                                    min_query_length: 4
                                 }
                             }
                         ]
@@ -390,7 +403,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
 
                 // quick assert for typeck
-                if (data.view.state.values.emoji.emoji.type != 'static_select') return;
+                if (data.view.state.values.emoji.emoji.type != 'external_select') return;
 
                 // React to message
                 const react_res = await web.reactions.add({
