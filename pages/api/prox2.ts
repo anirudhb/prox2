@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return await failRequest(data.response_url, 'Uh oh! Try again with a message you\'d like to confess!');
     }
     try {
-        await stageConfession(data.text);
+        await stageConfession(data.text, data.user_id);
     } catch (e) {
         return await failRequest(data.response_url, e);
     }

@@ -98,6 +98,8 @@ export interface TableRecord {
     text: string;
     staging_ts: string;
     published_ts: string;
+    uid_salt: string;
+    uid_hash: string;
 };
 
 export async function validateData(req: NextApiRequest): Promise<CommandData | null> {
@@ -130,14 +132,30 @@ export async function succeedRequest(response_url: string, message: string) {
     });
 }
 
-export async function stageConfession(message: string): Promise<void> {
+function hashUser(uid: string, salt: string): string {
+    return crypto.scryptSync(Buffer.from(uid), salt, 64).toString('hex');
+}
+
+export function sameUser(fields: TableRecord, uid: string): boolean {
+    const new_uid_hash = hashUser(uid, fields.uid_salt);
+    return crypto.timingSafeEqual(Buffer.from(fields.uid_hash), Buffer.from(new_uid_hash));
+}
+
+export async function stageConfession(message: string, uid: string): Promise<void> {
     console.log(`Staging confession...`);
+    console.log(`Creating new UID salt...`);
+    const uid_salt = crypto.randomBytes(16).toString('hex');
+    console.log(`Hashing UID...`);
+    const uid_hash = hashUser(uid, uid_salt);
+    console.log(`Salt = ${uid_salt} hashed = ${uid_hash}`);
     console.log(`Inserting into Airtable...`);
     let record;
     try {
         record = await table.create({
             text: message,
-            approved: false
+            approved: false,
+            uid_salt,
+            uid_hash,
         } as Partial<TableRecord>);
     } catch (_) {
         throw 'Failed to insert Airtable record';
