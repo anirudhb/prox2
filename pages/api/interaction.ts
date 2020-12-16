@@ -59,7 +59,7 @@ interface ViewSubmissionInteraction {
             values: {
                 [key: string]: {
                     [input: string]: {
-                        type: 'plain_text';
+                        type: 'plain_text_input';
                         value: string;
                     } | {
                         type: 'external_select';
@@ -348,7 +348,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
 
                 // quick assert for typeck
-                if (data.view.state.values.reply.confession_reply.type != 'plain_text') return;
+                if (data.view.state.values.reply.confession_reply.type != 'plain_text_input') return;
 
                 // Reply in thread
                 const r = await web.chat.postMessage({

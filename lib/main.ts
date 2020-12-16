@@ -243,6 +243,11 @@ export async function viewConfession(staging_ts: string, approved: boolean): Pro
     if (records.length == 1) {
         const record = records[0];
         const fields = record.fields as TableRecord;
+        if (fields.viewed) {
+            // return, already viewed
+            console.log(`Record already viewed, returning`);
+            return;
+        }
         // Publish record and update
         let ts = null;
         if (approved) {
