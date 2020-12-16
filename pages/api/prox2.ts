@@ -1,6 +1,8 @@
-import { NextApiRequest, NextApiResponse } from 'next'
+import crypto from 'crypto';
 
-import { validateData, failRequest, succeedRequest, stageConfession, verifySignature, api_config, setupMiddlewares } from '../../lib/main';
+import { NextApiRequest, NextApiResponse } from 'next';
+
+import { verifySignature, api_config, setupMiddlewares } from '../../lib/main';
 
 export const config = api_config;
 
@@ -16,31 +18,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return;
     }
     console.log(`Valid!`);
-    console.log(`Validating request...`);
-    const data = await validateData(req);
-    if (data == null) {
-        console.log(`Invalid request!`);
-        res.writeHead(400).end();
-        return;
+    console.log(`Starting real work in new request...`);
+    if (process.env.PROX2_NONCE === undefined) {
+        /// create new nonce for use in request
+        process.env.PROX2_NONCE = crypto.randomBytes(256).toString('hex');
     }
+    req.headers['x-prox2-nonce'] = process.env.PROX2_NONCE;
+    fetch(req.headers.host + '/api/prox2_work', {
+        headers: req.headers as any,
+        method: 'POST',
+        body: (req as unknown as { rawBody: string }).rawBody,
+    });
     console.log(`Acknowledging request...`);
-    res.writeHead(200);
-    console.log(`Fake 5s delay to see if Slack still works...`);
-    await new Promise(r => setTimeout(r, 5000));
-    if (data.text.trim().length <= 0) {
-        console.log(`Text is none, sending help!`);
-        res.end();
-        return await failRequest(data.response_url, `Uh oh! Try again with a message you\'d like to confess!
-Tip: Draft your confession in a DM so others don\'t see that you\'re typing!`);
-    }
-    try {
-        await stageConfession(data.text, data.user_id);
-    } catch (e) {
-        res.end();
-        return await failRequest(data.response_url, e);
-    }
-    console.log(`Notifying user...`);
-    await succeedRequest(data.response_url, 'Your message has been staged and will appear here after review by the confessions team!');
-    console.log(`Request success`);
-    res.end();
+    res.writeHead(200).end();
+
 }
