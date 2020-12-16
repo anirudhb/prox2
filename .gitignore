@@ -36,4 +36,4 @@ yarn-error.log*
 ngrok.exe
 ngrok
 
-secrets.ts
+secrets.json

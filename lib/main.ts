@@ -6,7 +6,7 @@ import body_parser from 'body-parser';
 
 import { NextApiRequest, NextApiResponse, PageConfig } from 'next';
 
-import { token, airtable_api_key, airtable_base, staging_channel, confessions_channel, slack_signing_secret } from '../secrets';
+import { token, airtable_api_key, airtable_base, staging_channel, confessions_channel, slack_signing_secret } from './secrets_wrapper';
 
 export const api_config = {
     api: {

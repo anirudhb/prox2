@@ -4,7 +4,7 @@ import emojis from 'emojis-keywords';
 import { Block, KnownBlock } from "@slack/web-api";
 
 import { api_config, failRequest, sameUser, setupMiddlewares, succeedRequest, table, TableRecord, verifySignature, viewConfession, web } from "../../lib/main";
-import { confessions_channel } from "../../secrets";
+import { confessions_channel } from "../../lib/secrets_wrapper";
 
 export const config = api_config;
 
