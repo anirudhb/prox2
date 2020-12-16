@@ -25,6 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     console.log(`Acknowledging request...`);
     res.writeHead(200);
+    console.log(`Fake 5s delay to see if Slack still works...`);
+    await new Promise(r => setTimeout(r, 5000));
     if (data.text.trim().length <= 0) {
         console.log(`Text is none, sending help!`);
         res.end();
