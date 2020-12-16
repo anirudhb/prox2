@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { api_config, setupMiddlewares, verifySignature, web } from '../../lib/main';
 
-import { confessions_channel } from '../../secrets';
+import { confessions_channel } from '../../lib/secrets_wrapper';
 
 export const config = api_config;
 
