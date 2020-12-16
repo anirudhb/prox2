@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         process.env.PROX2_NONCE = crypto.randomBytes(256).toString('hex');
     }
     req.headers['x-prox2-nonce'] = process.env.PROX2_NONCE;
-    fetch(req.headers.host + '/api/prox2_work', {
+    fetch('https://' + req.headers.host + '/api/prox2_work', {
         headers: req.headers as any,
         method: 'POST',
         body: (req as unknown as { rawBody: string }).rawBody,
