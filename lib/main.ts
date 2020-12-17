@@ -44,18 +44,23 @@ function rawbody_verify(req: any, _res: any, buf: any, encoding: any) {
     }
 }
 
-const parsers = [
-    body_parser.urlencoded({
-        verify: rawbody_verify,
-        extended: true
-    }),
-    body_parser.json({
-        verify: rawbody_verify
-    })
-];
-
-export async function setupMiddlewares(req: NextApiRequest, res: NextApiResponse) {
-    for (const parser of parsers) {
+export async function setupMiddlewares(req: NextApiRequest, res: NextApiResponse, options: {
+    urlencoded?: boolean;
+    json?: boolean;
+} = {}) {
+    const useParsers = [];
+    if (options.urlencoded !== false) {
+        useParsers.push(body_parser.urlencoded({
+            verify: rawbody_verify,
+            extended: true
+        }));
+    }
+    if (options.json !== false) {
+        useParsers.push(body_parser.json({
+            verify: rawbody_verify
+        }));
+    }
+    for (const parser of useParsers) {
         try {
             await withTimeout(1000, applyMiddleware(req, res, parser));
         } catch (_) {
