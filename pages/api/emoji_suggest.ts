@@ -10,8 +10,6 @@ interface BlockSuggestionInteraction {
     value: string;
 }
 
-
-
 function withTimeout<T>(millis: number, promise: Promise<T>): Promise<T> {
     const timeout = new Promise((_, r) => setTimeout(() => r(`Promise timed out after ${millis}ms`), millis));
     return Promise.race([
@@ -26,6 +24,9 @@ function withTimeout<T>(millis: number, promise: Promise<T>): Promise<T> {
 // since this requires that we return data in the response itself. That also makes
 // it unnecessary as well :)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    console.log(`handled request`);
+    res.writeHead(204).end();
+    return;
     await setupMiddlewares(req, res);
     console.log(`Setup middlewares`);
     res.writeHead(204).end();

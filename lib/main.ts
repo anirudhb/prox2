@@ -39,7 +39,7 @@ function rawbody_verify(req: any, _res: any, buf: any, encoding: any) {
 const parsers = [
     body_parser.urlencoded({
         verify: rawbody_verify,
-        extended: false
+        extended: true
     }),
     body_parser.json({
         verify: rawbody_verify
