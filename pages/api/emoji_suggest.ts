@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         emojis_list = [...emojis_list, ...custom_emojis];
         let search = data.value.replace(/[^a-zA-Z]/g, '');
         let search_re = new RegExp(search);
-        emojis_list = emojis_list.filter(emoji => search_re.test(emoji)).slice(0, 100);
+        emojis_list = emojis_list.filter(emoji => emoji.startsWith(':' + search)).slice(0, 100);
         res.json({
             options: emojis_list.map(emoji => {
                 return {
