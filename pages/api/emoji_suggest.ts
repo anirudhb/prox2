@@ -38,6 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     console.log(`Valid!`);
     const data = JSON.parse((req.body as { payload: string }).payload) as BlockSuggestionInteraction;
+    console.log(`Success!`);
+    res.writeHead(204).end();
+    return;
 
     if (data.type == 'block_suggestion') {
         console.log(`Block suggestion!`);

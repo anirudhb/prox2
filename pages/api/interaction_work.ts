@@ -246,7 +246,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     }
                 });
                 if (!modal_res.ok) throw `Failed to open modal`;
-            } {
+            } else {
                 console.log(`Unknown callback ${data.callback_id}`);
             }
         } catch (e) {
