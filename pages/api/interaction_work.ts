@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import emojis from 'emojis-keywords';
 import { Block, KnownBlock } from "@slack/web-api";
 
 import { api_config, failRequest, sameUser, setupMiddlewares, succeedRequest, table, TableRecord, validateNonce, verifySignature, viewConfession, web } from "../../lib/main";
@@ -73,14 +72,7 @@ interface ViewSubmissionInteraction {
     };
 }
 
-interface BlockSuggestionInteraction {
-    type: 'block_suggestion';
-    action_id: 'emoji';
-    block_id: 'emoji';
-    value: string;
-}
-
-type SlackInteractionPayload = MessageActionInteraction | ViewSubmissionInteraction | BlockSuggestionInteraction | BlockActionInteraction & {
+type SlackInteractionPayload = MessageActionInteraction | ViewSubmissionInteraction | BlockActionInteraction & {
     type: string;
 };
 
@@ -128,28 +120,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } else {
             console.log(`No action found`);
         }
-    } else if (data.type == 'block_suggestion') {
-        console.log(`Block suggestion!`);
-        // Enumerate emojis to build select box
-        let emojis_list = emojis;
-        const custom_emojis = await web.emoji.list();
-        if (!custom_emojis.ok) throw `Failed to fetch custom emoji`;
-        emojis_list = [...emojis_list, ...Object.keys(custom_emojis.emoji as { [emoji: string]: string }).map(x => `:${x}:`)];
-        emojis_list = emojis_list.filter(emoji => emoji.startsWith(data.value)).slice(0, 100);
-        res.json({
-            options: emojis_list.map(emoji => {
-                return {
-                    text: {
-                        type: 'plain_text',
-                        text: emoji,
-                        emoji: true
-                    },
-                    value: emoji
-                }
-            })
-        });
-        console.log(`Request success`);
-        return;
     } else if (data.type == 'message_action') {
         console.log(`Message action!`);
         try {
