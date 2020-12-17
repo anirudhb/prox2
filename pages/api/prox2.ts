@@ -30,8 +30,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: 'POST',
         headers: req.headers,
     });
-    req2.write((req as unknown as { rawBody: string }).rawBody);
-    req2.end();
+    await new Promise((resolve, reject) => {
+        req2.end((req as unknown as { rawBody: string }).rawBody, (error) => {
+            if (error) return reject(error);
+            resolve(null);
+        });
+    });
+    req2.destroy();
     console.log(`Acknowledging request...`);
     res.writeHead(200).end();
 
