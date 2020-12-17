@@ -15,6 +15,14 @@ export const api_config = {
     }
 } as PageConfig;
 
+export function withTimeout<T>(millis: number, promise: Promise<T>): Promise<T> {
+    const timeout = new Promise((_, r) => setTimeout(() => r(`Promise timed out after ${millis}ms`), millis));
+    return Promise.race([
+        promise,
+        timeout
+    ]) as Promise<T>;
+}
+
 function applyMiddleware<T>(
     req: NextApiRequest, res: NextApiResponse,
     fn: (arg0: any, arg1: any, cb: (arg0: T) => void) => T
@@ -48,7 +56,7 @@ const parsers = [
 
 export async function setupMiddlewares(req: NextApiRequest, res: NextApiResponse) {
     for (const parser of parsers) {
-        await applyMiddleware(req, res, parser);
+        await withTimeout(1000, applyMiddleware(req, res, parser));
     }
 }
 

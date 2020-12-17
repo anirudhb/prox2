@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import emojis from 'emojis-keywords';
-import { verifySignature, web } from "../../lib/main";
+import { setupMiddlewares, verifySignature, web, withTimeout } from "../../lib/main";
 
 interface BlockSuggestionInteraction {
     type: 'block_suggestion';
@@ -10,21 +10,12 @@ interface BlockSuggestionInteraction {
     value: string;
 }
 
-function withTimeout<T>(millis: number, promise: Promise<T>): Promise<T> {
-    const timeout = new Promise((_, r) => setTimeout(() => r(`Promise timed out after ${millis}ms`), millis));
-    return Promise.race([
-        promise,
-        timeout
-    ]) as Promise<T>;
-}
-
-
 // Note:
 // We can't put this behind a _work handler like we would with other handlers
 // since this requires that we return data in the response itself. That also makes
 // it unnecessary as well :)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    // await setupMiddlewares(req, res);
+    await setupMiddlewares(req, res);
     // console.log(`Setup middlewares`);
     // res.writeHead(204).end();
     // return;
