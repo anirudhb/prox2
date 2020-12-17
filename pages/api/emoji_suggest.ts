@@ -18,6 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await setupMiddlewares(req, res, { urlencoded: false });
     console.log(`Rawbody=`);
     console.log((req as unknown as { rawBody: string }).rawBody);
+    console.log(`Body=`);
+    console.log(JSON.stringify(req.body));
     // console.log(`Setup middlewares`);
     // res.writeHead(204).end();
     // return;
