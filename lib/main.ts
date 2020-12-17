@@ -320,7 +320,11 @@ export function verifySignature(req: NextApiRequest): boolean {
         console.log(`Our timestamp was ${current_timestamp_int}; theirs was ${timestamp_int}`);
         return false;
     }
-    const sig_base = 'v0:' + timestamp + ':' + ((req as unknown as { rawBody: string }).rawBody || JSON.stringify(req.body));
+    let rawBody = (req as unknown as { rawBody: string }).rawBody;
+    if (rawBody.length <= 0) {
+        rawBody = JSON.stringify(req.body);
+    }
+    const sig_base = 'v0:' + timestamp + ':' + rawBody;
     const my_sig = 'v0=' + crypto.createHmac('sha256', slack_signing_secret)
         .update(sig_base)
         .digest('hex');
