@@ -10,6 +10,17 @@ interface BlockSuggestionInteraction {
     value: string;
 }
 
+
+
+function withTimeout<T>(millis: number, promise: Promise<T>): Promise<T> {
+    const timeout = new Promise((_, r) => setTimeout(() => r(`Promise timed out after ${millis}ms`), millis));
+    return Promise.race([
+        promise,
+        timeout
+    ]) as Promise<T>;
+}
+
+
 // Note:
 // We can't put this behind a _work handler like we would with other handlers
 // since this requires that we return data in the response itself. That also makes
@@ -32,9 +43,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log(`Block suggestion!`);
         // Enumerate emojis to build select box
         let emojis_list = emojis;
-        const custom_emojis = await web.emoji.list();
-        if (!custom_emojis.ok) throw `Failed to fetch custom emoji`;
-        emojis_list = [...emojis_list, ...Object.keys(custom_emojis.emoji as { [emoji: string]: string }).map(x => `:${x}:`)];
+        let custom_emojis: string[] = [];
+        try {
+            const custom_emojis_r = await withTimeout(3000, web.emoji.list());
+            if (!custom_emojis_r.ok) throw `Failed to fetch custom emoji`;
+            custom_emojis = Object.keys(custom_emojis_r.emoji as { [emoji: string]: string }).map(x => `:${x}:`);
+        } catch (_) {
+            console.log(`Failed to retrieve custom emoji`);
+        }
+        emojis_list = [...emojis_list, ...custom_emojis];
         let search = data.value.replace(/:/g, '');
         emojis_list = emojis_list.filter(emoji => emoji.includes(search)).slice(0, 100);
         res.json({
