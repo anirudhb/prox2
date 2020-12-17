@@ -239,7 +239,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                                         text: 'Select an emoji'
                                     },
                                     action_id: 'emoji',
-                                    min_query_length: 4
+                                    min_query_length: 2
                                 }
                             }
                         ]
