@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     req.headers['x-prox2-nonce'] = process.env.PROX2_NONCE;
     const req2 = http.request({
         host: req.headers.host,
-        href: '/api/prox2_work',
+        path: '/api/prox2_work',
         method: 'POST',
         headers: req.headers,
     });
