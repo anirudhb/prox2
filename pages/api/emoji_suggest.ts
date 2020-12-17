@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import emojis from 'emojis-keywords';
-import { setupMiddlewares, verifySignature, web } from "../../lib/main";
+import { verifySignature, web } from "../../lib/main";
 
 interface BlockSuggestionInteraction {
     type: 'block_suggestion';
@@ -24,13 +24,10 @@ function withTimeout<T>(millis: number, promise: Promise<T>): Promise<T> {
 // since this requires that we return data in the response itself. That also makes
 // it unnecessary as well :)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    console.log(`handled request`);
-    res.writeHead(204).end();
-    return;
-    await setupMiddlewares(req, res);
-    console.log(`Setup middlewares`);
-    res.writeHead(204).end();
-    return;
+    // await setupMiddlewares(req, res);
+    // console.log(`Setup middlewares`);
+    // res.writeHead(204).end();
+    // return;
 
     console.log(`Emoji suggestion!`);
     console.log(`Validating signature...`);
@@ -42,9 +39,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     console.log(`Valid!`);
     const data = JSON.parse((req.body as { payload: string }).payload) as BlockSuggestionInteraction;
-    console.log(`Success!`);
-    res.writeHead(204).end();
-    return;
+    // console.log(`Success!`);
+    // res.writeHead(204).end();
+    // return;
 
     if (data.type == 'block_suggestion') {
         console.log(`Block suggestion!`);
