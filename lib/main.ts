@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import https from 'https';
 
 import Airtable from 'airtable';
 import { WebClient } from '@slack/web-api';
@@ -316,4 +317,50 @@ export function verifySignature(req: NextApiRequest): boolean {
         return false;
     }
     return true;
+}
+
+export async function forwardReq(req: NextApiRequest) {
+    const muckedReq = req as unknown as { baseUrl: string; path: string; };
+    const path = muckedReq.baseUrl + muckedReq.path + '_work';
+    const append = crypto.createHash('sha256').update(path).digest('hex');
+    const env_name = `PROX2_NONCE_${append.toUpperCase()}`;
+
+    if (process.env[env_name] === undefined) {
+        /// create new nonce for use in request
+        process.env[env_name] = crypto.randomBytes(256).toString('hex');
+    }
+    req.headers['x-prox2-nonce'] = process.env.PROX2_NONCE;
+    const req2 = https.request({
+        host: req.headers.host,
+        path,
+        method: 'POST',
+        headers: req.headers,
+    });
+
+    await new Promise(resolve => {
+        req2.end((req as unknown as { rawBody: string }).rawBody, () => {
+            resolve(null);
+        });
+    });
+}
+
+export async function validateNonce(req: NextApiRequest) {
+    const muckedReq = req as unknown as { baseUrl: string; path: string; };
+    const path = muckedReq.baseUrl + muckedReq.path + '_work';
+    const append = crypto.createHash('sha256').update(path).digest('hex');
+    const env_name = `PROX2_NONCE_${append.toUpperCase()}`;
+
+    console.log(`Validating nonce...`);
+    const my_nonce = process.env[env_name];
+    if (my_nonce === undefined) {
+        throw `${env_name} not defined!`;
+    }
+    const nonce = req.headers['x-prox2-nonce'];
+    if (nonce === undefined) {
+        throw `Invalid X-Prox2-Nonce`;
+    }
+    if (!crypto.timingSafeEqual(Buffer.from(my_nonce), Buffer.from(nonce))) {
+        throw `Nonces are not equal!`
+        return;
+    }
 }
