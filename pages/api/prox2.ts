@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import http from 'http';
+import https from 'https';
 
 import { NextApiRequest, NextApiResponse } from 'next';
 
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         process.env.PROX2_NONCE = crypto.randomBytes(256).toString('hex');
     }
     req.headers['x-prox2-nonce'] = process.env.PROX2_NONCE;
-    const req2 = http.request({
+    const req2 = https.request({
         host: req.headers.host,
         path: '/api/prox2_work',
         method: 'POST',
