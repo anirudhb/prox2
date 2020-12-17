@@ -309,7 +309,7 @@ export async function viewConfession(staging_ts: string, approved: boolean): Pro
 export function verifySignature(req: NextApiRequest): boolean {
     const timestamp = req.headers['x-slack-request-timestamp'];
     if (timestamp == undefined || typeof timestamp != 'string') {
-        console.log(`Invalid X-Slack-Request-Timestamp`);
+        console.log(`Invalid X-Slack-Request-Timestamp, got ${timestamp}`);
         return false;
     }
     const timestamp_int = parseInt(timestamp, 10);
@@ -326,11 +326,11 @@ export function verifySignature(req: NextApiRequest): boolean {
         .digest('hex');
     const slack_sig = req.headers['x-slack-signature'];
     if (slack_sig == 'undefined' || typeof slack_sig != 'string') {
-        console.log(`Invalid X-Slack-Signature`);
+        console.log(`Invalid X-Slack-Signature, got ${slack_sig}`);
         return false;
     }
     if (!crypto.timingSafeEqual(Buffer.from(my_sig), Buffer.from(slack_sig))) {
-        console.log(`Signatures do not match`);
+        console.log(`Signatures do not match, ours = ${my_sig}, theirs = ${slack_sig}`);
         return false;
     }
     return true;

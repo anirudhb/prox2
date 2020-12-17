@@ -16,6 +16,8 @@ interface BlockSuggestionInteraction {
 // it unnecessary as well :)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     await setupMiddlewares(req, res, { urlencoded: false });
+    console.log(`Rawbody=`);
+    console.log((req as unknown as { rawBody: string }).rawBody);
     // console.log(`Setup middlewares`);
     // res.writeHead(204).end();
     // return;
