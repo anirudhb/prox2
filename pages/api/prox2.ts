@@ -35,9 +35,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             resolve(null);
         });
     });
-    try {
-        req2.destroy();
-    } catch (_) { }
     console.log(`Acknowledging request...`);
     res.writeHead(200).end();
 
