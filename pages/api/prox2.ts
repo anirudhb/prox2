@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import http from 'http';
 
 import { NextApiRequest, NextApiResponse } from 'next';
 
@@ -24,11 +25,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         process.env.PROX2_NONCE = crypto.randomBytes(256).toString('hex');
     }
     req.headers['x-prox2-nonce'] = process.env.PROX2_NONCE;
-    fetch('https://' + req.headers.host + '/api/prox2_work', {
-        headers: req.headers as any,
+    const req2 = http.request({
+        host: req.headers.host,
         method: 'POST',
-        body: (req as unknown as { rawBody: string }).rawBody,
+        headers: req.headers,
     });
+    req2.write((req as unknown as { rawBody: string }).rawBody);
+    req2.end();
     console.log(`Acknowledging request...`);
     res.writeHead(200).end();
 
