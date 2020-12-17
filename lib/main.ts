@@ -321,7 +321,7 @@ export function verifySignature(req: NextApiRequest): boolean {
 
 export async function forwardReq(req: NextApiRequest) {
     if (req.url == null) throw 'URL is null';
-    const path = req.url;
+    const path = req.url + '_work';
     const append = crypto.createHash('sha256').update(path).digest('hex');
     const env_name = `PROX2_NONCE_${append.toUpperCase()}`;
 
