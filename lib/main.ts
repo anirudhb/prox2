@@ -56,7 +56,11 @@ const parsers = [
 
 export async function setupMiddlewares(req: NextApiRequest, res: NextApiResponse) {
     for (const parser of parsers) {
-        await withTimeout(1000, applyMiddleware(req, res, parser));
+        try {
+            await withTimeout(1000, applyMiddleware(req, res, parser));
+        } catch (_) {
+            console.log(`Middleware ${parser} timed out`);
+        }
     }
 }
 
