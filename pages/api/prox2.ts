@@ -31,6 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: 'POST',
         headers: req.headers,
     });
+
     await new Promise(resolve => {
         req2.end((req as unknown as { rawBody: string }).rawBody, () => {
             resolve(null);
