@@ -27,6 +27,9 @@ function withTimeout<T>(millis: number, promise: Promise<T>): Promise<T> {
 // it unnecessary as well :)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     await setupMiddlewares(req, res);
+    console.log(`Setup middlewares`);
+    res.writeHead(204).end();
+    return;
 
     console.log(`Emoji suggestion!`);
     console.log(`Validating signature...`);
