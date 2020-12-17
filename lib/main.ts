@@ -329,7 +329,7 @@ export async function forwardReq(req: NextApiRequest) {
         /// create new nonce for use in request
         process.env[env_name] = crypto.randomBytes(256).toString('hex');
     }
-    req.headers['x-prox2-nonce'] = process.env.PROX2_NONCE;
+    req.headers['x-prox2-nonce'] = process.env[env_name];
     const req2 = https.request({
         host: req.headers.host,
         path,
