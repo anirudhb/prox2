@@ -214,16 +214,6 @@ export async function stageConfession(message: string, uid: string): Promise<voi
                         },
                         value: "disapprove",
                         action_id: "disapprove"
-                    },
-                    {
-                        type: "button",
-                        text: {
-                            type: "plain_text",
-                            text: "Open in browser",
-                            emoji: true
-                        },
-                        value: "open-in-browser",
-                        action_id: "open-in-browser"
                     }
                 ]
             }
