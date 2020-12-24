@@ -31,7 +31,7 @@ interface BlockSuggestionInteraction {
 // since this requires that we return data in the response itself. That also makes
 // it unnecessary as well :)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    await setupMiddlewares(req, res, { urlencoded: false });
+    await setupMiddlewares(req, res);
     console.log(`Rawbody=`);
     console.log((req as unknown as { rawBody: string }).rawBody);
     console.log(`Body=`);
