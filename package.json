@@ -14,7 +14,8 @@
     "emojis-keywords": "^2.0.0",
     "next": "latest",
     "react": "^16.12.0",
-    "react-dom": "^16.12.0"
+    "react-dom": "^16.12.0",
+    "source-map-support": "^0.5.19"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.0",
@@ -23,5 +24,5 @@
     "@types/react-dom": "^16.9.4",
     "typescript": "4.0"
   },
-  "license": "AGPL"
+  "license": "AGPL-3.0-or-later"
 }
