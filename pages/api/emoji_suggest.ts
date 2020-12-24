@@ -17,7 +17,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import emojis from 'emojis-keywords';
-import { setupMiddlewares, verifySignature, web, withTimeout } from "../../lib/main";
+import { api_config, setupMiddlewares, verifySignature, web, withTimeout } from "../../lib/main";
+
+export const config = api_config;
 
 interface BlockSuggestionInteraction {
     type: 'block_suggestion';
@@ -32,10 +34,10 @@ interface BlockSuggestionInteraction {
 // it unnecessary as well :)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     await setupMiddlewares(req, res);
-    console.log(`Rawbody=`);
-    console.log((req as unknown as { rawBody: string }).rawBody);
-    console.log(`Body=`);
-    console.log(JSON.stringify(req.body));
+    // console.log(`Rawbody=`);
+    // console.log((req as unknown as { rawBody: string }).rawBody);
+    // console.log(`Body=`);
+    // console.log(JSON.stringify(req.body));
     // console.log(`Setup middlewares`);
     // res.writeHead(204).end();
     // return;
