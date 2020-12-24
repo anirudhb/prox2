@@ -34,15 +34,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (data.text.trim().length <= 0) {
         console.log(`Text is none, sending help!`);
-        res.end();
-        return await failRequest(data.response_url, `Uh oh! Try again with a message you\'d like to confess!
+        await failRequest(data.response_url, `Uh oh! Try again with a message you\'d like to confess!
 Tip: Draft your confession in a DM so others don\'t see that you\'re typing!`);
+        res.end();
+        return;
     }
     try {
         await stageConfession(data.text, data.user_id);
     } catch (e) {
+        await failRequest(data.response_url, e);
         res.end();
-        return await failRequest(data.response_url, e);
+        return;
     }
     console.log(`Notifying user...`);
     await succeedRequest(data.response_url, 'Your message has been staged and will appear here after review by the confessions team!');
