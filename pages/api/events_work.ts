@@ -22,7 +22,7 @@ interface DMEvent {
     channel: string;
 }
 
-type SlackEventPayload = UrlVerificationEvent | {
+export type SlackEventPayload = UrlVerificationEvent | {
     type: 'event_callback';
     event: DMEvent;
 };
@@ -49,11 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`Valid!`);
     const payload = req.body as SlackEventPayload;
     console.log(`Type = ${payload.type}`);
-    if (payload.type == 'url_verification') {
-        console.log(`Responding with value of challenge...`);
-        res.end(payload.challenge);
-        return;
-    } else if (payload.type == 'event_callback') {
+    if (payload.type == 'event_callback') {
         const data = payload.event;
         console.log(JSON.stringify(payload.event, null, 2));
         if (data.type == 'message' && data.channel_type == 'im') {
