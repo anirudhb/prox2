@@ -68,7 +68,7 @@ export async function setupMiddlewares(req: NextApiRequest, res: NextApiResponse
     if (options.urlencoded !== false) {
         useParsers.push(body_parser.urlencoded({
             verify: rawbody_verify,
-            extended: true
+            // extended: true
         }));
     }
     if (options.json !== false) {
