@@ -329,7 +329,7 @@ export function verifySignature(req: NextApiRequest): boolean {
         return false;
     }
     let rawBody = (req as unknown as { rawBody: string }).rawBody;
-    if (rawBody.length <= 0) {
+    if (!rawBody || rawBody.length <= 0) {
         rawBody = JSON.stringify(req.body);
     }
     const sig_base = 'v0:' + timestamp + ':' + rawBody;
