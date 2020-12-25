@@ -20,6 +20,7 @@ import { Block, KnownBlock } from "@slack/web-api";
 
 import { api_config, failRequest, sameUser, setupMiddlewares, succeedRequest, table, TableRecord, validateNonce, verifySignature, viewConfession, web } from "../../lib/main";
 import { confessions_channel } from "../../lib/secrets_wrapper";
+import { Blocks, ExternalSelectAction, InputSection, MarkdownText, PlainText, PlainTextInput, TextSection } from "../../lib/block_builder";
 
 export const config = api_config;
 
@@ -166,36 +167,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     view: {
                         callback_id: `reply_modal_${fields.published_ts}`,
                         type: 'modal',
-                        title: {
-                            type: 'plain_text',
-                            text: `Replying to #${fields.id}`
-                        },
-                        submit: {
-                            type: 'plain_text',
-                            text: 'Reply',
-                            emoji: true
-                        },
-                        close: {
-                            type: 'plain_text',
-                            text: 'Cancel',
-                            emoji: true
-                        },
-                        blocks: [
-                            {
-                                type: 'input',
-                                block_id: 'reply',
-                                element: {
-                                    type: 'plain_text_input',
-                                    multiline: true,
-                                    action_id: 'confession_reply'
-                                },
-                                label: {
-                                    type: 'plain_text',
-                                    text: 'Reply',
-                                    emoji: true
-                                }
-                            }
-                        ]
+                        title: new PlainText(`Replying to #${fields.id}`).render(),
+                        submit: new PlainText('Reply').render(),
+                        close: new PlainText('Cancel').render(),
+                        blocks: new Blocks([
+                            new InputSection(
+                                new PlainTextInput('confession_reply', true),
+                                new PlainText('Reply'),
+                                'reply'
+                            )
+                        ]).render()
                     }
                 });
                 if (!resp.ok) {
@@ -225,40 +206,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     view: {
                         type: 'modal',
                         callback_id: `react_modal_${fields.published_ts}_${data.message.ts}`,
-                        title: {
-                            type: 'plain_text',
-                            text: `Reacting to #${fields.id}`,
-                            emoji: true
-                        },
-                        submit: {
-                            type: 'plain_text',
-                            text: 'React',
-                            emoji: true
-                        },
-                        close: {
-                            type: 'plain_text',
-                            text: 'Cancel',
-                            emoji: true
-                        },
-                        blocks: [
-                            {
-                                type: 'section',
-                                block_id: 'emoji',
-                                text: {
-                                    type: 'plain_text',
-                                    text: 'Pick an emoji to react with'
-                                },
-                                accessory: {
-                                    type: 'external_select',
-                                    placeholder: {
-                                        type: 'plain_text',
-                                        text: 'Select an emoji'
-                                    },
-                                    action_id: 'emoji',
-                                    min_query_length: 2
-                                }
-                            }
-                        ]
+                        title: new PlainText(`Reacting to #${fields.id}`).render(),
+                        submit: new PlainText('React').render(),
+                        close: new PlainText('Cancel').render(),
+                        blocks: new Blocks([
+                            new TextSection(
+                                new PlainText('Pick an emoji to react with'),
+                                'emoji',
+                                new ExternalSelectAction(
+                                    new PlainText('Select an emoji'),
+                                    2,
+                                    'emoji'
+                                )
+                            )
+                        ]).render()
                     }
                 });
                 if (!modal_res.ok) throw `Failed to open modal`;
@@ -295,47 +256,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     res.json({
                         response_action: 'update',
                         view: {
-                            callback_id: `reply_modal_${fields.published_ts}`,
-                            type: 'modal',
-                            title: {
-                                type: 'plain_text',
-                                text: `Replying to #${fields.id}`
-                            },
-                            submit: {
-                                type: 'plain_text',
-                                text: 'Reply',
-                                emoji: true
-                            },
-                            close: {
-                                type: 'plain_text',
-                                text: 'Cancel',
-                                emoji: true
-                            },
+                            ...data.view,
                             blocks: [
-                                {
-                                    type: 'input',
-                                    block_id: 'reply',
-                                    element: {
-                                        type: 'plain_text_input',
-                                        multiline: true,
-                                        action_id: 'confession_reply'
-                                    },
-                                    label: {
-                                        type: 'plain_text',
-                                        text: 'Reply',
-                                        emoji: true
-                                    }
-                                },
-                                {
-                                    type: 'section',
-                                    text: {
-                                        type: 'mrkdwn',
-                                        text: 'Failed to reply: \
-*You are not the original poster of the confession, so cannot reply anonymously.*',
-                                    }
-                                }
+                                ...data.view.blocks,
+                                new TextSection(new MarkdownText('Failed to reply: \
+You are not the original poster of the confession, so cannot reply anonymously.*')).render()
                             ]
                         }
+                    } as {
+                        response_action: 'update';
+                        view: {
+                            blocks: any[];
+                        };
                     });
                     return;
                     // throw `Different user, cannot reply!`;
@@ -376,20 +308,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             ...data.view,
                             blocks: [
                                 ...data.view.blocks,
-                                {
-                                    type: 'section',
-                                    text: {
-                                        type: 'mrkdwn',
-                                        text: 'Failed to react: \
-*You are not the original poster of the confession, so cannot react anonymously.*',
-                                    }
-                                }
+                                new TextSection(new MarkdownText('Failed to react: \
+ *You are not the original poster of the confession, so cannot react anonymously.*')).render()
                             ]
                         }
                     } as {
                         response_action: 'update';
                         view: {
-                            blocks: (Block | KnownBlock)[];
+                            blocks: any[];
                         };
                     });
                     return;

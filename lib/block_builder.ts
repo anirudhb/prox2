@@ -20,7 +20,9 @@ abstract class Renderable {
     abstract render(): any;
 }
 
-abstract class Block extends Renderable { }
+abstract class Block extends Renderable {
+    constructor(protected block_id: string | null = null) { super(); }
+}
 
 abstract class Section extends Block { }
 
@@ -49,21 +51,67 @@ export class MarkdownText extends Text {
     }
 }
 
-export class TextSection extends Section {
-    constructor(private text: Text) { super(); }
+abstract class Action extends Renderable {
+    constructor(protected action_id: string) { super(); }
+}
+
+abstract class Accessory extends Renderable { }
+
+export class ExternalSelectAction extends Action implements Accessory {
+    constructor(private placeholder: Text, private min_query_length: number, action_id: string) { super(action_id); }
 
     render(): any {
         return {
-            type: 'section',
-            text: this.text.render()
+            type: 'external_select',
+            placeholder: this.placeholder.render(),
+            min_query_length: this.min_query_length,
+            action_id: this.action_id
         };
     }
 }
 
-abstract class Action extends Renderable { }
+export class TextSection extends Section {
+    constructor(private text: Text, block_id: string | null = null, private accessory: Accessory | null = null) { super(block_id); }
+
+    render(): any {
+        return {
+            type: 'section',
+            text: this.text.render(),
+            block_id: this.block_id,
+            accessory: this.accessory?.render(),
+        };
+    }
+}
+
+abstract class Input extends Renderable { }
+
+export class PlainTextInput extends Input {
+    constructor(private action_id: string, private multiline: boolean = false) { super(); }
+
+    render(): any {
+        return {
+            type: 'plain_text_input',
+            multiline: this.multiline,
+            action_id: this.action_id
+        };
+    }
+}
+
+export class InputSection extends Section {
+    constructor(private input: Input, private label: Text, block_id: string | null = null) { super(block_id); }
+
+    render(): any {
+        return {
+            type: 'input',
+            element: this.input.render(),
+            label: this.label.render(),
+            block_id: this.block_id
+        };
+    }
+}
 
 export class ButtonAction extends Action {
-    constructor(private text: Text, private value: string, private action_id: string) { super(); }
+    constructor(private text: Text, private value: string, action_id: string) { super(action_id); }
 
     render(): any {
         return {
