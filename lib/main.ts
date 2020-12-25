@@ -26,6 +26,7 @@ import body_parser from 'body-parser';
 import { NextApiRequest, NextApiResponse, PageConfig } from 'next';
 
 import { token, airtable_api_key, airtable_base, staging_channel, confessions_channel, slack_signing_secret } from './secrets_wrapper';
+import { ActionsSection, Blocks, ButtonAction, MarkdownText, PlainText, TextSection } from './block_builder';
 
 export const api_config = {
     api: {
@@ -202,40 +203,13 @@ export async function stageConfession(message: string, uid: string): Promise<voi
     const staging_message = await web.chat.postMessage({
         channel: staging_channel,
         text: '',
-        blocks: [
-            {
-                type: "section",
-                text: {
-                    type: "mrkdwn",
-                    text: `(staging) *${fields.id}*: ${fields.text}`
-                }
-            },
-            {
-                type: "actions",
-                elements: [
-                    {
-                        type: "button",
-                        text: {
-                            type: "plain_text",
-                            text: ":true: Approve",
-                            emoji: true
-                        },
-                        value: "approve",
-                        action_id: "approve"
-                    },
-                    {
-                        type: "button",
-                        text: {
-                            type: "plain_text",
-                            text: ":x: Disapprove",
-                            emoji: true
-                        },
-                        value: "disapprove",
-                        action_id: "disapprove"
-                    }
-                ]
-            }
-        ]
+        blocks: new Blocks([
+            new TextSection(new MarkdownText(`(staging) *${fields.id}* ${fields.text}`)),
+            new ActionsSection([
+                new ButtonAction(new PlainText(':true: Approve'), 'approve', 'approve'),
+                new ButtonAction(new PlainText(':x: Reject'), 'disapprove', 'disapprove')
+            ])
+        ]).render(),
     });
     if (!staging_message.ok) {
         console.log(`Failed to post message. Rolling back Airtable record...`);

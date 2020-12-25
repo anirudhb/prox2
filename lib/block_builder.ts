@@ -94,7 +94,9 @@ export class Blocks extends Renderable {
     }
 }
 
-type BuilderMarkerType = 'actions' | 'plain_text' | 'button' | 'text_section';
+/**
+
+type BuilderMarkerType = 'actions' | 'plain_text' | 'button' | 'text_section' | 'input_section';
 
 type BuilderSpan = BuilderMarker | BuilderItem | BuilderTag;
 
@@ -239,7 +241,9 @@ export class BlocksBuilder extends Renderable {
     actions(f: BuilderFn): BlocksBuilder { this.spanned('actions', f); return this; }
     button(f: BuilderFn): BlocksBuilder { this.spanned('button', f); return this; }
     text_section(f: BuilderFn): BlocksBuilder { this.spanned('text_section', f); return this; }
+    input_section(f: BuilderFn): BlocksBuilder { this.spanned('input_section', f); return this; }
     plain_text(text: string, emoji: boolean = true): BlocksBuilder { this.item(new PlainText(text, emoji)); return this; }
+    plain_text_input(action_id: string, multiline: boolean = false): BlocksBuilder { this.item(new PlainTextInput(action_id, multiline)); return this; }
     markdown(text: string): BlocksBuilder { this.item(new MarkdownText(text)); return this; }
     action_id(id: string): BlocksBuilder { this.tag('action_id', id); return this; }
     value(val: string): BlocksBuilder { this.tag('value', val); return this; }
@@ -274,7 +278,7 @@ export class BlocksBuilder extends Renderable {
         while (state.length > 0) {
             const open = advance();
             if (open.type != 'begin') throw new Error(`Expected begin, found ${prettySpan(open)}`);
-            const allowed_toplevels: BuilderMarkerType[] = ['actions', 'text_section'];
+            const allowed_toplevels: BuilderMarkerType[] = ['actions', 'text_section', 'input_section'];
             if (!allowed_toplevels.includes(open.marker_type)) throw new Error(`Expected one of ${allowed_toplevels}, found ${open.marker_type}`);
             if (open.marker_type == 'text_section') {
                 const parse_text_section = function (): TextSection {
@@ -337,9 +341,20 @@ export class BlocksBuilder extends Renderable {
                     return new ActionsSection(actions);
                 };
                 toplevels.push(parse_actions());
+            } else if (open.marker_type == 'input_section') {
+                const parse_input_section = function (): InputSection {
+                    // Expect *one* input and label. Optional block_id.
+                    let block_id: string | null = null;
+                    while (!peek_is_end('input_section')) {
+                        const open = pee
+                    }
+                };
+                toplevels.push(parse_input_section());
             }
         }
 
         return toplevels.map(t => t.render());
     }
 }
+
+*/
