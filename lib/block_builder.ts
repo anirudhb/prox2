@@ -74,12 +74,13 @@ export class TextSection extends Section {
     constructor(private text: Text, block_id: string | null = null, private accessory: Accessory | null = null) { super(block_id); }
 
     render(): any {
-        return {
+        let r: any = {
             type: 'section',
             text: this.text.render(),
-            block_id: this.block_id,
             accessory: this.accessory?.render(),
         };
+        if (this.block_id != null) r.block_id = this.block_id;
+        return r;
     }
 }
 

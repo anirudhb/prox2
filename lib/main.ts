@@ -273,14 +273,19 @@ export async function viewConfession(staging_ts: string, approved: boolean): Pro
             throw `Failed to update Airtable record`;
         }
         console.log(`Updated!`);
-        console.log(`Deleting staging message...`);
+        console.log(`Updating staging message...`);
         try {
-            await web.chat.delete({
+            await web.chat.update({
                 channel: staging_channel,
-                ts: staging_ts
+                ts: staging_ts,
+                text: '',
+                blocks: new Blocks([
+                    new TextSection(new MarkdownText(`(staging) *${fields.id}* ${fields.text}`)),
+                    new TextSection(new PlainText(approved ? ":true: Approved" : ":x: Rejected")),
+                ]).render(),
             });
         } catch (_) {
-            throw `Failed to delete staging message`;
+            throw `Failed to update staging message`;
         }
         console.log(`Deleted!`);
     } else {
