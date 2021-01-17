@@ -71,7 +71,7 @@ export async function setupMiddlewares(req: NextApiRequest, res: NextApiResponse
     if (options.urlencoded !== false) {
         useParsers.push(body_parser.urlencoded({
             verify: rawbody_verify,
-            // extended: true
+            extended: true
         }));
     }
     if (options.json !== false) {
@@ -227,6 +227,16 @@ export async function stageConfession(message: string, uid: string): Promise<voi
         throw 'Failed to update Airtable record';
     }
     console.log(`Updated!`);
+    console.log(`Posting confession to user's DM...`);
+    // Post the message in a DM to them for future reference
+    const response = await web.chat.postMessage({
+        channel: uid,
+        text: `The following message has been staged as confession *#${fields.id}*:\n${fields.text}`,
+    });
+    if (!response.ok) {
+        throw `Failed to post confession to user's DM!`;
+    }
+    console.log(`Posted confession to user's DM!`);
 }
 
 export async function viewConfession(staging_ts: string, approved: boolean): Promise<void> {
@@ -368,7 +378,7 @@ export async function validateNonce(req: NextApiRequest) {
     if (nonce === undefined) {
         throw `Invalid X-Prox2-Nonce`;
     }
-    if (!crypto.timingSafeEqual(Buffer.from(my_nonce), Buffer.from(nonce))) {
+    if (!crypto.timingSafeEqual(Buffer.from(my_nonce), Buffer.from(nonce as string))) {
         throw `Nonces are not equal!`
     }
 }

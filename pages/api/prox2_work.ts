@@ -20,6 +20,23 @@ import { api_config, failRequest, setupMiddlewares, stageConfession, succeedRequ
 
 export const config = api_config;
 
+const HELP = `
+Welcome to Prox2! I can help you submit confessions anonymously!
+
+To get started, open a DM with Prox2 (or yourself.) Then, start typing your confession with
+
+/prox2 <confession>
+
+It's as simple as that!
+
+You can reply to an existing confession using the "Reply anonymously" message shortcut, or react to a message in the thread using the "React anonymously" shortcut!
+
+When a confession of yours gets published, I recommend you "follow thread" on it, so that you will be notified if someone replies in its thread.
+Prox2 can't do this automatically since it really doesn't know who published the confession.
+
+Prox2 will be open source forever at https://github.com/anirudhb/prox2!
+`.trim();
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     await setupMiddlewares(req, res);
 
@@ -50,11 +67,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (data.text.trim().length <= 0) {
         console.log(`Text is none, sending help!`);
-        await failRequest(data.response_url, `Uh oh! Try again with a message you\'d like to confess!
-Tip: Draft your confession in a DM so others don\'t see that you\'re typing!`);
+        await failRequest(data.response_url, HELP);
         res.end();
         return;
     }
+
+    // Check if context was in a DM or not
+    if (!data.channel_id.startsWith("D")) {
+        // Fail since they are trying to use the confessions channel to submit a confession
+        // Make sure to include the original command for easy copy-pasting
+        console.log(`User tried to stage confession outside of DM!`);
+        await failRequest(data.response_url, `Uh oh! You tried to stage a confession outside a DM. Try re-running this command inside a DM:\n/prox2 ${data.text}`);
+        res.end();
+        return;
+    }
+
     try {
         await stageConfession(data.text, data.user_id);
     } catch (e) {

@@ -67,7 +67,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`Type = ${payload.type}`);
     if (payload.type == 'event_callback') {
         const data = payload.event;
-        console.log(JSON.stringify(payload.event, null, 2));
         if (data.type == 'message' && data.channel_type == 'im') {
             console.log('DM!');
             if (!data.bot_profile) {
