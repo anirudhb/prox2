@@ -28,7 +28,9 @@ interface BlockActionInteraction {
     type: 'block_actions';
     trigger_id: string;
     response_url: string;
-    user: {id: string};
+    user: {
+      id: string;
+    };
     message: {
         type: 'message';
         text: string;
