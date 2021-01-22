@@ -294,7 +294,7 @@ export async function viewConfession(staging_ts: string, approved: boolean, revi
                 text: '',
                 blocks: new Blocks([
                     new TextSection(new MarkdownText(`(staging) *${fields.id}* ${fields.text}`)),
-                    new TextSection(new PlainText(statusText)),
+                    new TextSection(new MarkdownText(statusText)),
                 ]).render(),
             });
         } catch (_) {
