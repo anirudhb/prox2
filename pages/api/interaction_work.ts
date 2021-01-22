@@ -28,7 +28,9 @@ interface BlockActionInteraction {
     type: 'block_actions';
     trigger_id: string;
     response_url: string;
-    user: string;
+    user: {
+      id: string;
+    };
     message: {
         type: 'message';
         text: string;
@@ -122,10 +124,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             try {
                 if (action.value == 'approve') {
                     console.log(`Approval of message ts=${data.message.ts}`);
-                    await viewConfession(data.message.ts, true);
+                    await viewConfession(data.message.ts, true, data.user.id);
                 } else if (action.value == 'disapprove') {
                     console.log(`Disapproval of message ts=${data.message.ts}`);
-                    await viewConfession(data.message.ts, false);
+                    await viewConfession(data.message.ts, false, data.user.id);
                 } else {
                     console.log(`Unknown value ${action.value}`);
                 }
