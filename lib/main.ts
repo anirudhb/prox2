@@ -287,7 +287,7 @@ export async function viewConfession(staging_ts: string, approved: boolean, revi
         try {
             const statusText = `${
               approved ? `:true: Approved` : `:x: Rejected`
-            } by <@${reviewer_uid}> on <!date^${Math.floor(Date.now() / 1000)}^{date} at {time}|${new Date().toISOString()}>.`;
+            } by <@${reviewer_uid}> <!date^${Math.floor(Date.now() / 1000)}^{date_short_pretty} at {time}|${new Date().toISOString()}>.`;
             await web.chat.update({
                 channel: staging_channel,
                 ts: staging_ts,
