@@ -239,7 +239,7 @@ export async function stageConfession(message: string, uid: string): Promise<voi
     console.log(`Posted confession to user's DM!`);
 }
 
-export async function viewConfession(staging_ts: string, approved: boolean): Promise<void> {
+export async function viewConfession(staging_ts: string, approved: boolean, reviewer_uid: string): Promise<void> {
     console.log(`${approved ? 'Approving' : 'Disapproving'} confession with staging_ts=${staging_ts}...`);
     // Check if message is in Airtable
     let records;
@@ -285,13 +285,16 @@ export async function viewConfession(staging_ts: string, approved: boolean): Pro
         console.log(`Updated!`);
         console.log(`Updating staging message...`);
         try {
+            const statusText = `${
+              approved ? `:true: Approved` : `:x: Rejected`
+            } by <@${reviewer_uid}> <!date^${Date.now()}^{date_short_pretty} at {time}|${new Date().toISOString()}>.`;
             await web.chat.update({
                 channel: staging_channel,
                 ts: staging_ts,
                 text: '',
                 blocks: new Blocks([
                     new TextSection(new MarkdownText(`(staging) *${fields.id}* ${fields.text}`)),
-                    new TextSection(new PlainText(approved ? ":true: Approved" : ":x: Rejected")),
+                    new TextSection(new PlainText(statusText)),
                 ]).render(),
             });
         } catch (_) {

@@ -122,10 +122,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             try {
                 if (action.value == 'approve') {
                     console.log(`Approval of message ts=${data.message.ts}`);
-                    await viewConfession(data.message.ts, true);
+                    await viewConfession(data.message.ts, true, data.user);
                 } else if (action.value == 'disapprove') {
                     console.log(`Disapproval of message ts=${data.message.ts}`);
-                    await viewConfession(data.message.ts, false);
+                    await viewConfession(data.message.ts, false, data.user);
                 } else {
                     console.log(`Unknown value ${action.value}`);
                 }
