@@ -82,6 +82,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return;
     }
 
+    // meme successfully incinerated
+    data.text = data.text
+                    .replace(/^\s*<\s*/, "") // remove angle bracket from the beginning (pad spaces)
+                    .replace(/(\s*\|\s*nothing)?\s*>\s*$/, ""); // remove | nothing > from the end
+
     try {
         await stageConfession(data.text, data.user_id);
     } catch (e) {
