@@ -231,7 +231,7 @@ export async function stageConfession(message: string, uid: string): Promise<voi
     // Post the message in a DM to them for future reference
     const response = await web.chat.postMessage({
         channel: uid,
-        text: `The following message has been staged as confession *#${fields.id}*:\n${fields.text}`,
+        text: `Your message has been staged as confession *#${fields.id}*`,
     });
     if (!response.ok) {
         throw `Failed to post confession to user's DM!`;
