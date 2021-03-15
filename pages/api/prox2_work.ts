@@ -90,6 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         res.end();
         return;
     }
+
     console.log(`Notifying user...`);
     await succeedRequest(data.response_url, `Your message has been staged as confession #${confession_id} and will appear here after review by the confessions team!`, true);
     console.log(`Request success`);
