@@ -15,9 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { api_config, setupMiddlewares, validateNonce, verifySignature, web } from '../../lib/main';
-
-import { confessions_channel } from '../../lib/secrets_wrapper';
+import { api_config, setupMiddlewares, stageDMConfession, validateNonce, verifySignature } from '../../lib/main';
 
 export const config = api_config;
 
@@ -30,6 +28,7 @@ interface UrlVerificationEvent {
 interface DMEvent {
     type: 'message';
     channel_type: 'im';
+    ts: string;
     text: string;
     user: string;
     bot_profile?: {
@@ -70,10 +69,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (data.type == 'message' && data.channel_type == 'im') {
             console.log('DM!');
             if (!data.bot_profile) {
-                await web.chat.postMessage({
-                    channel: data.channel,
-                    text: `Uh oh! You can't DM me! Try typing /prox2 in <#${confessions_channel}> to get started!`,
-                });
+                // Handle DM staging...
+                await stageDMConfession(data.ts, data.user);
             }
         }
     }

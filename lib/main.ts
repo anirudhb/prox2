@@ -158,20 +158,14 @@ export async function failRequest(response_url: string, error: string) {
     });
 }
 
-export async function succeedRequest(response_url: string, message: string | null, in_channel: boolean = false) {
+export async function succeedRequest(response_url: string, message: string) {
     console.log(`Succeeding with message: ${message}`);
-    let body: any = {
-        response_type: in_channel ? 'in_channel' : 'ephemeral',
-    };
-    if (message != null) {
-        body.text = message;
-    }
     await fetch(response_url, {
         method: 'POST',
-        body: JSON.stringify(body),
-        headers: {
-            "Content-Type": "application/json",
-        },
+        body: JSON.stringify({
+            response_type: 'ephemeral',
+            text: message,
+        }),
     });
 }
 
@@ -182,6 +176,27 @@ function hashUser(uid: string, salt: string): string {
 export function sameUser(fields: TableRecord, uid: string): boolean {
     const new_uid_hash = hashUser(uid, fields.uid_salt);
     return crypto.timingSafeEqual(Buffer.from(fields.uid_hash), Buffer.from(new_uid_hash));
+}
+
+export async function stageDMConfession(message_ts: string, uid: string): Promise<void> {
+    console.log(`Posting confirmation message...`);
+    const confirmation_message = await web.chat.postMessage({
+        channel: uid,
+        text: '',
+        thread_ts: message_ts,
+        reply_broadcast: true,
+        blocks: new Blocks([
+            new TextSection(new MarkdownText('Would you like to stage this confession?')),
+            new ActionsSection([
+                new ButtonAction(new MarkdownText(':true: Stage'), 'stage', 'stage'),
+                new ButtonAction(new MarkdownText(':x: Cancel'), 'cancel', 'cancel'),
+            ]),
+        ]).render(),
+    });
+    if (!confirmation_message.ok) {
+        console.log(`Failed to post confirmation message!`);
+        throw `Failed to post confirmation message!`;
+    }
 }
 
 export async function stageConfession(message: string, uid: string): Promise<number> {
