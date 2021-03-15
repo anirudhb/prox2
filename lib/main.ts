@@ -162,6 +162,7 @@ export async function succeedRequest(response_url: string, message: string | nul
     console.log(`Succeeding with message: ${message}`);
     let body: any = {
         response_type: in_channel ? 'in_channel' : 'ephemeral',
+        as_user: true,
     };
     if (message != null) {
         body.text = message;
