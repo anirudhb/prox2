@@ -29,11 +29,14 @@ interface BlockActionInteraction {
     trigger_id: string;
     response_url: string;
     user: {
-      id: string;
+        id: string;
+    };
+    channel: {
+        id: string;
+        name: string;
     };
     message: {
         type: 'message';
-        channel: string;
         text: string;
         ts: string;
         thread_ts?: string;
@@ -134,7 +137,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     console.log(`Stage of message thread_ts=${data.message.thread_ts}`);
                     // Get message contents
                     const resp = await web.conversations.history({
-                        channel: data.message.channel,
+                        channel: data.channel.id,
                         inclusive: true,
                         latest: data.message.thread_ts,
                         limit: 1,
@@ -147,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     const id = await stageConfession(message_contents, data.user.id);
                     // Edit
                     const resp2 = await web.chat.update({
-                        channel: data.message.channel,
+                        channel: data.channel.id,
                         ts: data.message.ts,
                         text: '',
                         blocks: new Blocks([
@@ -160,7 +163,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 } else if (action.value == 'cancel') {
                     console.log(`Cancel of message thread_ts=${data.message.thread_ts}`);
                     const resp = await web.chat.delete({
-                        channel: data.message.channel,
+                        channel: data.channel.id,
                         ts: data.message.ts,
                     });
                     if (!resp.ok) {
