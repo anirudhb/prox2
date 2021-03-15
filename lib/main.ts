@@ -188,8 +188,8 @@ export async function stageDMConfession(message_ts: string, uid: string): Promis
         blocks: new Blocks([
             new TextSection(new MarkdownText('Would you like to stage this confession?'), null, null),
             new ActionsSection([
-                new ButtonAction(new MarkdownText(':true: Stage'), 'stage', 'stage'),
-                new ButtonAction(new MarkdownText(':x: Cancel'), 'cancel', 'cancel'),
+                new ButtonAction(new PlainText(':true: Stage'), 'stage', 'stage'),
+                new ButtonAction(new PlainText(':x: Cancel'), 'cancel', 'cancel'),
             ]),
         ]).render(),
     });

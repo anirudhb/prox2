@@ -112,7 +112,7 @@ export class InputSection extends Section {
 }
 
 export class ButtonAction extends Action {
-    constructor(private text: Text, private value: string, action_id: string) { super(action_id); }
+    constructor(private text: PlainText, private value: string, action_id: string) { super(action_id); }
 
     render(): any {
         return {
