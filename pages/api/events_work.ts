@@ -33,6 +33,7 @@ interface UrlVerificationEvent {
 
 interface DMEvent {
   type: "message";
+  subtype?: "bot_message";
   channel_type: "im";
   ts: string;
   text: string;
@@ -79,7 +80,7 @@ export default async function handler(
     const data = payload.event;
     if (data.type == "message" && data.channel_type == "im") {
       console.log("DM!");
-      if (!data.bot_profile) {
+      if (!data.bot_profile && data.subtype != "bot_message") {
         // Handle DM staging...
         await stageDMConfession(data.ts, data.user);
       }

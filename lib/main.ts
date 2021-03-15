@@ -185,6 +185,7 @@ export async function stageDMConfession(message_ts: string, uid: string): Promis
         text: '',
         thread_ts: message_ts,
         reply_broadcast: true,
+        as_user: true,
         blocks: new Blocks([
             new TextSection(new MarkdownText('Would you like to stage this confession?'), null, null),
             new ActionsSection([
