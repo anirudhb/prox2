@@ -82,6 +82,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return;
     }
 
+    await succeedRequest(data.response_url, null, true);
+
     let confession_id;
     try {
         confession_id = await stageConfession(data.text, data.user_id);
