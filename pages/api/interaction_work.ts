@@ -18,7 +18,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Block, KnownBlock } from "@slack/web-api";
 
-import { api_config, failRequest, sameUser, setupMiddlewares, succeedRequest, table, TableRecord, validateNonce, verifySignature, viewConfession, web } from "../../lib/main";
+import { api_config, failRequest, sameUser, setupMiddlewares, stageConfession, succeedRequest, table, TableRecord, validateNonce, verifySignature, viewConfession, web } from "../../lib/main";
 import { confessions_channel } from "../../lib/secrets_wrapper";
 import { Blocks, ExternalSelectAction, InputSection, MarkdownText, PlainText, PlainTextInput, TextSection } from "../../lib/block_builder";
 
@@ -29,12 +29,17 @@ interface BlockActionInteraction {
     trigger_id: string;
     response_url: string;
     user: {
-      id: string;
+        id: string;
+    };
+    channel: {
+        id: string;
+        name: string;
     };
     message: {
         type: 'message';
         text: string;
         ts: string;
+        thread_ts?: string;
     };
     actions: {
         block_id: string;
@@ -128,6 +133,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 } else if (action.value == 'disapprove') {
                     console.log(`Disapproval of message ts=${data.message.ts}`);
                     await viewConfession(data.message.ts, false, data.user.id);
+                } else if (action.value == 'stage') {
+                    console.log(`Stage of message thread_ts=${data.message.thread_ts}`);
+                    // Get message contents
+                    const resp = await web.conversations.history({
+                        channel: data.channel.id,
+                        inclusive: true,
+                        latest: data.message.thread_ts,
+                        limit: 1,
+                    });
+                    if (!resp.ok) {
+                        throw `Failed to fetch message contents!`;
+                    }
+                    const message_contents = (resp as any).messages[0].text;
+                    // Stage
+                    const id = await stageConfession(message_contents, data.user.id);
+                    // Edit
+                    const resp2 = await web.chat.update({
+                        channel: data.channel.id,
+                        ts: data.message.ts,
+                        text: '',
+                        blocks: new Blocks([
+                            new TextSection(new MarkdownText(`:true: Staged as confession #${id}`), null, null),
+                        ]).render(),
+                    });
+                    if (!resp2.ok) {
+                        throw `Failed to update message!`;
+                    }
+                } else if (action.value == 'cancel') {
+                    console.log(`Cancel of message thread_ts=${data.message.thread_ts}`);
+                    const resp = await web.chat.delete({
+                        channel: data.channel.id,
+                        ts: data.message.ts,
+                    });
+                    if (!resp.ok) {
+                        throw `Failed to delete message!`;
+                    }
                 } else {
                     console.log(`Unknown value ${action.value}`);
                 }

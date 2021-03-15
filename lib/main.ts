@@ -164,8 +164,8 @@ export async function succeedRequest(response_url: string, message: string) {
         method: 'POST',
         body: JSON.stringify({
             response_type: 'ephemeral',
-            text: message
-        })
+            text: message,
+        }),
     });
 }
 
@@ -178,7 +178,28 @@ export function sameUser(fields: TableRecord, uid: string): boolean {
     return crypto.timingSafeEqual(Buffer.from(fields.uid_hash), Buffer.from(new_uid_hash));
 }
 
-export async function stageConfession(message: string, uid: string): Promise<void> {
+export async function stageDMConfession(message_ts: string, uid: string): Promise<void> {
+    console.log(`Posting confirmation message...`);
+    const confirmation_message = await web.chat.postMessage({
+        channel: uid,
+        text: '',
+        thread_ts: message_ts,
+        reply_broadcast: true,
+        blocks: new Blocks([
+            new TextSection(new MarkdownText('Would you like to stage this confession?'), null, null),
+            new ActionsSection([
+                new ButtonAction(new PlainText(':true: Stage'), 'stage', 'stage'),
+                new ButtonAction(new PlainText(':x: Cancel'), 'cancel', 'cancel'),
+            ]),
+        ]).render(),
+    });
+    if (!confirmation_message.ok) {
+        console.log(`Failed to post confirmation message!`);
+        throw `Failed to post confirmation message!`;
+    }
+}
+
+export async function stageConfession(message: string, uid: string): Promise<number> {
     console.log(`Staging confession...`);
     console.log(`Creating new UID salt...`);
     const uid_salt = crypto.randomBytes(16).toString('hex');
@@ -227,16 +248,7 @@ export async function stageConfession(message: string, uid: string): Promise<voi
         throw 'Failed to update Airtable record';
     }
     console.log(`Updated!`);
-    console.log(`Posting confession to user's DM...`);
-    // Post the message in a DM to them for future reference
-    const response = await web.chat.postMessage({
-        channel: uid,
-        text: `The following message has been staged as confession *#${fields.id}*:\n${fields.text}`,
-    });
-    if (!response.ok) {
-        throw `Failed to post confession to user's DM!`;
-    }
-    console.log(`Posted confession to user's DM!`);
+    return fields.id;
 }
 
 export async function viewConfession(staging_ts: string, approved: boolean, reviewer_uid: string): Promise<void> {

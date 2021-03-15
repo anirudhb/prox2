@@ -16,7 +16,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { api_config, failRequest, setupMiddlewares, stageConfession, succeedRequest, validateData, validateNonce, verifySignature } from "../../lib/main";
+import { api_config, failRequest, setupMiddlewares, stageConfession, validateData, validateNonce, verifySignature } from "../../lib/main";
 
 export const config = api_config;
 
@@ -89,8 +89,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         res.end();
         return;
     }
-    console.log(`Notifying user...`);
-    await succeedRequest(data.response_url, 'Your message has been staged and will appear here after review by the confessions team!');
+
+    // console.log(`Notifying user...`);
+    // await succeedRequest(data.response_url, `Your message has been staged as confession #${confession_id} and will appear here after review by the confessions team!`, true);
     console.log(`Request success`);
     res.writeHead(200).end();
 }
