@@ -82,6 +82,7 @@ export default async function handler(
       console.log("DM!");
       if (!data.bot_profile && data.subtype != "bot_message") {
         // Handle DM staging...
+        console.log(`User = ${data.user}, ts = ${data.ts}, subtype = ${data.subtype}`);
         await stageDMConfession(data.ts, data.user);
       }
     }

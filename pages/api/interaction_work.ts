@@ -145,7 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     if (!resp.ok) {
                         throw `Failed to fetch message contents!`;
                     }
-                    const message_contents = (resp as any).messages.text;
+                    const message_contents = (resp as any).messages[0].text;
                     // Stage
                     const id = await stageConfession(message_contents, data.user.id);
                     // Edit
