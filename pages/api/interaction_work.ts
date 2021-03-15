@@ -151,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         ts: data.message.ts,
                         text: '',
                         blocks: new Blocks([
-                            new TextSection(new MarkdownText(`:true: Staged as confession #${id}`)),
+                            new TextSection(new MarkdownText(`:true: Staged as confession #${id}`), null, null),
                         ]).render(),
                     });
                     if (!resp2.ok) {
