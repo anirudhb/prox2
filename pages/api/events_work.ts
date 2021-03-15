@@ -33,7 +33,8 @@ interface UrlVerificationEvent {
 
 interface DMEvent {
   type: "message";
-  subtype?: "bot_message";
+  subtype?: "bot_message" | "thread_broadcast" | "message_changed";
+  hidden?: boolean;
   channel_type: "im";
   ts: string;
   text: string;
@@ -80,9 +81,8 @@ export default async function handler(
     const data = payload.event;
     if (data.type == "message" && data.channel_type == "im") {
       console.log("DM!");
-      if (!data.bot_profile && data.subtype != "bot_message") {
+      if (!data.bot_profile && data.subtype != "bot_message" && data.subtype != "message_changed" && data.subtype != "thread_broadcast" && !data.hidden) {
         // Handle DM staging...
-        console.log(`User = ${data.user}, ts = ${data.ts}, subtype = ${data.subtype}`);
         await stageDMConfession(data.ts, data.user);
       }
     }
