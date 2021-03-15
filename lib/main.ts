@@ -158,12 +158,12 @@ export async function failRequest(response_url: string, error: string) {
     });
 }
 
-export async function succeedRequest(response_url: string, message: string) {
+export async function succeedRequest(response_url: string, message: string, in_channel: boolean = false) {
     console.log(`Succeeding with message: ${message}`);
     await fetch(response_url, {
         method: 'POST',
         body: JSON.stringify({
-            response_type: 'ephemeral',
+            response_type: in_channel ? 'in_channel' : 'ephemeral',
             text: message
         })
     });
@@ -178,7 +178,7 @@ export function sameUser(fields: TableRecord, uid: string): boolean {
     return crypto.timingSafeEqual(Buffer.from(fields.uid_hash), Buffer.from(new_uid_hash));
 }
 
-export async function stageConfession(message: string, uid: string): Promise<void> {
+export async function stageConfession(message: string, uid: string): Promise<number> {
     console.log(`Staging confession...`);
     console.log(`Creating new UID salt...`);
     const uid_salt = crypto.randomBytes(16).toString('hex');
@@ -227,16 +227,7 @@ export async function stageConfession(message: string, uid: string): Promise<voi
         throw 'Failed to update Airtable record';
     }
     console.log(`Updated!`);
-    console.log(`Posting confession to user's DM...`);
-    // Post the message in a DM to them for future reference
-    const response = await web.chat.postMessage({
-        channel: uid,
-        text: `The following message has been staged as confession *#${fields.id}*:\n${fields.text}`,
-    });
-    if (!response.ok) {
-        throw `Failed to post confession to user's DM!`;
-    }
-    console.log(`Posted confession to user's DM!`);
+    return fields.id;
 }
 
 export async function viewConfession(staging_ts: string, approved: boolean, reviewer_uid: string): Promise<void> {

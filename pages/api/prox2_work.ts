@@ -82,15 +82,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return;
     }
 
+    let confession_id;
     try {
-        await stageConfession(data.text, data.user_id);
+        confession_id = await stageConfession(data.text, data.user_id);
     } catch (e) {
         await failRequest(data.response_url, e);
         res.end();
         return;
     }
     console.log(`Notifying user...`);
-    await succeedRequest(data.response_url, 'Your message has been staged and will appear here after review by the confessions team!');
+    await succeedRequest(data.response_url, `Your message has been staged as confession #${confession_id} and will appear here after review by the confessions team!`);
     console.log(`Request success`);
     res.writeHead(200).end();
 }
