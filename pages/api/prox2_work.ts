@@ -21,6 +21,7 @@ import {
   failRequest,
   setupMiddlewares,
   stageConfession,
+  succeedRequest,
   validateData,
   validateNonce,
   verifySignature,
@@ -96,16 +97,20 @@ export default async function handler(
     return;
   }
 
+  let confession_id;
   try {
-    await stageConfession(data.text, data.user_id);
+    confession_id = await stageConfession(data.text, data.user_id);
   } catch (e) {
     await failRequest(data.response_url, e);
     res.end();
     return;
   }
 
-  // console.log(`Notifying user...`);
-  // await succeedRequest(data.response_url, `Your message has been staged as confession #${confession_id} and will appear here after review by the confessions team!`, true);
+  console.log(`Notifying user...`);
+  await succeedRequest(
+    data.response_url,
+    `Your message has been staged as confession #${confession_id} and will appear here after review by the confessions team!`
+  );
   console.log(`Request success`);
   res.writeHead(200).end();
 }
