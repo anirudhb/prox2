@@ -81,7 +81,13 @@ export default async function handler(
     const data = payload.event;
     if (data.type == "message" && data.channel_type == "im") {
       console.log("DM!");
-      if (!data.bot_profile && data.subtype != "bot_message" && data.subtype != "message_changed" && data.subtype != "thread_broadcast" && !data.hidden) {
+      if (
+        !data.bot_profile &&
+        data.subtype != "bot_message" &&
+        data.subtype != "message_changed" &&
+        data.subtype != "thread_broadcast" &&
+        !data.hidden
+      ) {
         // Handle DM staging...
         await stageDMConfession(data.ts, data.user);
       }

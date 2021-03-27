@@ -17,128 +17,166 @@
 // General utilities for building Slack blocks.
 
 abstract class Renderable {
-    abstract render(): any;
+  abstract render(): any;
 }
 
 abstract class Block extends Renderable {
-    constructor(protected block_id: string | null = null) { super(); }
+  constructor(protected block_id: string | null = null) {
+    super();
+  }
 }
 
-abstract class Section extends Block { }
+abstract class Section extends Block {}
 
-abstract class Text extends Renderable { }
+abstract class Text extends Renderable {}
 
 export class PlainText extends Text {
-    constructor(private text: string, private emoji: boolean = true) { super(); }
+  constructor(private text: string, private emoji: boolean = true) {
+    super();
+  }
 
-    render(): any {
-        return {
-            type: 'plain_text',
-            text: this.text,
-            emoji: this.emoji
-        };
-    }
+  render(): any {
+    return {
+      type: "plain_text",
+      text: this.text,
+      emoji: this.emoji,
+    };
+  }
 }
 
 export class MarkdownText extends Text {
-    constructor(private text: string) { super(); }
+  constructor(private text: string) {
+    super();
+  }
 
-    render(): any {
-        return {
-            type: 'mrkdwn',
-            text: this.text
-        };
-    }
+  render(): any {
+    return {
+      type: "mrkdwn",
+      text: this.text,
+    };
+  }
 }
 
 abstract class Action extends Renderable {
-    constructor(protected action_id: string) { super(); }
+  constructor(protected action_id: string) {
+    super();
+  }
 }
 
-abstract class Accessory extends Renderable { }
+abstract class Accessory extends Renderable {}
 
 export class ExternalSelectAction extends Action implements Accessory {
-    constructor(private placeholder: Text, private min_query_length: number, action_id: string) { super(action_id); }
+  constructor(
+    private placeholder: Text,
+    private min_query_length: number,
+    action_id: string
+  ) {
+    super(action_id);
+  }
 
-    render(): any {
-        return {
-            type: 'external_select',
-            placeholder: this.placeholder.render(),
-            min_query_length: this.min_query_length,
-            action_id: this.action_id
-        };
-    }
+  render(): any {
+    return {
+      type: "external_select",
+      placeholder: this.placeholder.render(),
+      min_query_length: this.min_query_length,
+      action_id: this.action_id,
+    };
+  }
 }
 
 export class TextSection extends Section {
-    constructor(private text: Text, block_id: string | null = null, private accessory: Accessory | null = null) { super(block_id); }
+  constructor(
+    private text: Text,
+    block_id: string | null = null,
+    private accessory: Accessory | null = null
+  ) {
+    super(block_id);
+  }
 
-    render(): any {
-        let r: any = {
-            type: 'section',
-            text: this.text.render(),
-            accessory: this.accessory?.render(),
-        };
-        if (this.block_id != null) r.block_id = this.block_id;
-        return r;
-    }
+  render(): any {
+    let r: any = {
+      type: "section",
+      text: this.text.render(),
+      accessory: this.accessory?.render(),
+    };
+    if (this.block_id != null) r.block_id = this.block_id;
+    return r;
+  }
 }
 
-abstract class Input extends Renderable { }
+abstract class Input extends Renderable {}
 
 export class PlainTextInput extends Input {
-    constructor(private action_id: string, private multiline: boolean = false) { super(); }
+  constructor(private action_id: string, private multiline: boolean = false) {
+    super();
+  }
 
-    render(): any {
-        return {
-            type: 'plain_text_input',
-            multiline: this.multiline,
-            action_id: this.action_id
-        };
-    }
+  render(): any {
+    return {
+      type: "plain_text_input",
+      multiline: this.multiline,
+      action_id: this.action_id,
+    };
+  }
 }
 
 export class InputSection extends Section {
-    constructor(private input: Input, private label: Text, block_id: string | null = null) { super(block_id); }
+  constructor(
+    private input: Input,
+    private label: Text,
+    block_id: string | null = null
+  ) {
+    super(block_id);
+  }
 
-    render(): any {
-        return {
-            type: 'input',
-            element: this.input.render(),
-            label: this.label.render(),
-            block_id: this.block_id
-        };
-    }
+  render(): any {
+    return {
+      type: "input",
+      element: this.input.render(),
+      label: this.label.render(),
+      block_id: this.block_id,
+    };
+  }
 }
 
 export class ButtonAction extends Action {
-    constructor(private text: PlainText, private value: string, action_id: string) { super(action_id); }
+  constructor(
+    private text: PlainText,
+    private value: string,
+    action_id: string
+  ) {
+    super(action_id);
+  }
 
-    render(): any {
-        return {
-            type: 'button',
-            text: this.text.render(),
-            value: this.value,
-            action_id: this.action_id
-        };
-    }
+  render(): any {
+    return {
+      type: "button",
+      text: this.text.render(),
+      value: this.value,
+      action_id: this.action_id,
+    };
+  }
 }
 
 export class ActionsSection extends Section {
-    constructor(private actions: Action[]) { super(); }
+  constructor(private actions: Action[]) {
+    super();
+  }
 
-    render(): any {
-        return {
-            type: 'actions',
-            elements: this.actions.map(action => action.render())
-        }
-    }
+  render(): any {
+    return {
+      type: "actions",
+      elements: this.actions.map((action) => action.render()),
+    };
+  }
 }
 
 export class Blocks extends Renderable {
-    constructor(private sections: Block[]) { super(); }
+  constructor(private sections: Block[]) {
+    super();
+  }
 
-    render(): any {
-        return this.sections.map(section => section.render());
-    }
+  render(): any {
+    return this.sections.map((section) => section.render());
+  }
 }

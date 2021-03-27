@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import Layout from '../web/Layout'
-import styles from '../web/styles.module.css'
+import Layout from "../web/Layout";
+import styles from "../web/styles.module.css";
 
 const IndexPage = () => (
   <Layout title="Shhhhh!">
     <p className={styles.center}>Coming soon!</p>
   </Layout>
-)
+);
 
-export default IndexPage
+export default IndexPage;

@@ -14,16 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import React, { ReactNode } from 'react'
-import Head from 'next/head'
-import styles from './styles.module.css'
+import React, { ReactNode } from "react";
+import Head from "next/head";
+import styles from "./styles.module.css";
 
 type Props = {
-  children?: ReactNode
-  title?: string
-}
+  children?: ReactNode;
+  title?: string;
+};
 
-const Layout = ({ children, title = '' }: Props) => (
+const Layout = ({ children, title = "" }: Props) => (
   <div className={styles.font}>
     <Head>
       <title>{title}</title>
@@ -32,6 +32,6 @@ const Layout = ({ children, title = '' }: Props) => (
     </Head>
     {children}
   </div>
-)
+);
 
-export default Layout
+export default Layout;
