@@ -238,7 +238,34 @@ export async function stageDMConfession(
   }
 }
 
-export async function reviveConfessions() {}
+export async function reviveConfessions() {
+  console.log(`Getting unviewed confessions...`);
+  const unviewedConfessions = await table
+    .select({
+      filterByFormula: "viewed = FALSE",
+    })
+    .all();
+  for (const record of unviewedConfessions) {
+    const fields = record.fields as TableRecord;
+    console.log(`Removing old message (if any) and ignoring errors...`);
+    if (fields.staging_ts) {
+      await web.chat.delete({
+        channel: staging_channel,
+        ts: fields.staging_ts,
+      });
+    }
+    const newTs = await postStagingMessage(fields.id, fields.text);
+    console.log(`Updating record...`);
+    try {
+      await record.patchUpdate({
+        staging_ts: newTs,
+      } as Partial<TableRecord>);
+    } catch (_) {
+      throw `Failed to update Airtable record!`;
+    }
+  }
+  console.log(`Restaged all unviewed confessions!`);
+}
 
 export async function postStagingMessage(
   id: number,
