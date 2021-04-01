@@ -67,6 +67,8 @@ export default async function handler(
       data.response_url,
       `This command can only be used in the staging channel!`
     );
+    res.end();
+    return;
   }
 
   await succeedRequest(
