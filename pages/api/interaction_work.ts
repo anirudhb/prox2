@@ -313,7 +313,7 @@ export default async function handler(
         console.log(`Unknown callback ${data.callback_id}`);
       }
     } catch (e) {
-      await failRequest(data.response_url, e);
+      await failRequest(data.response_url, JSON.stringify(e));
       res.writeHead(500).end();
       return;
     }

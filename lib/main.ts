@@ -187,12 +187,17 @@ export async function failRequest(response_url: string, error: string) {
   });
 }
 
-export async function succeedRequest(response_url: string, message: string) {
+export async function succeedRequest(
+  response_url: string,
+  message: string,
+  in_channel: boolean = false
+) {
   console.log(`Succeeding with message: ${message}`);
   await fetch(response_url, {
     method: "POST",
     body: JSON.stringify({
-      response_type: "ephemeral",
+      response_type: in_channel ? "in_channel" : "ephemeral",
+      replace_original: "true",
       text: message,
     }),
   });
@@ -238,6 +243,67 @@ export async function stageDMConfession(
   }
 }
 
+export async function reviveConfessions() {
+  console.log(`Getting unviewed confessions...`);
+  let unviewedConfessions;
+  try {
+    unviewedConfessions = await table
+      .select({
+        filterByFormula: "viewed = FALSE()",
+      })
+      .all();
+  } catch (_) {
+    throw `Failed to fetch unviewed confessions!`;
+  }
+  for (const record of unviewedConfessions) {
+    const fields = record.fields as TableRecord;
+    console.log(`Removing old message (if any) and ignoring errors...`);
+    if (fields.staging_ts) {
+      await web.chat.delete({
+        channel: staging_channel,
+        ts: fields.staging_ts,
+      });
+    }
+    const newTs = await postStagingMessage(fields.id, fields.text);
+    console.log(`Updating record...`);
+    try {
+      await record.patchUpdate({
+        staging_ts: newTs,
+      } as Partial<TableRecord>);
+    } catch (_) {
+      throw `Failed to update Airtable record!`;
+    }
+  }
+  console.log(`Restaged all unviewed confessions!`);
+}
+
+export async function postStagingMessage(
+  id: number,
+  text: string
+): Promise<string> {
+  console.log(`Posting message to staging channel...`);
+  const staging_message = await web.chat.postMessage({
+    channel: staging_channel,
+    text: "",
+    blocks: new Blocks([
+      new TextSection(new MarkdownText(`(staging) *${id}* ${text}`)),
+      new ActionsSection([
+        new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
+        new ButtonAction(
+          new PlainText(":x: Reject"),
+          "disapprove",
+          "disapprove"
+        ),
+      ]),
+    ]).render(),
+  });
+  if (!staging_message.ok) {
+    throw "Failed to post message to staging channel";
+  }
+  console.log(`Posted message!`);
+  return staging_message.ts as string;
+}
+
 export async function stageConfession(
   message: string,
   uid: string
@@ -263,34 +329,19 @@ export async function stageConfession(
   console.log(`Inserted!`);
   console.log(`Posting message to staging channel...`);
   const fields = record.fields as TableRecord;
-  const staging_message = await web.chat.postMessage({
-    channel: staging_channel,
-    text: "",
-    blocks: new Blocks([
-      new TextSection(
-        new MarkdownText(`(staging) *${fields.id}* ${fields.text}`)
-      ),
-      new ActionsSection([
-        new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
-        new ButtonAction(
-          new PlainText(":x: Reject"),
-          "disapprove",
-          "disapprove"
-        ),
-      ]),
-    ]).render(),
-  });
-  if (!staging_message.ok) {
+  let staging_ts;
+  try {
+    staging_ts = await postStagingMessage(fields.id, fields.text);
+  } catch (e) {
     console.log(`Failed to post message. Rolling back Airtable record...`);
     await record.destroy();
     console.log(`Rolled back changes. Notifying user...`);
-    throw "Failed to post message to staging channel";
+    throw e;
   }
-  console.log(`Posted message!`);
   console.log(`Updating Airtable record...`);
   try {
     await record.patchUpdate({
-      staging_ts: staging_message.ts as string,
+      staging_ts,
     } as Partial<TableRecord>);
   } catch (_) {
     throw "Failed to update Airtable record";
@@ -312,11 +363,11 @@ export async function viewConfession(
   // Check if message is in Airtable
   let records;
   try {
-    records = await (
-      await table.select({
+    records = await table
+      .select({
         filterByFormula: `{staging_ts} = ${staging_ts}`,
       })
-    ).firstPage();
+      .firstPage();
   } catch (_) {
     throw `Failed to fetch Airtable record!`;
   }
