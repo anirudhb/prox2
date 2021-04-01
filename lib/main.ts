@@ -193,6 +193,7 @@ export async function succeedRequest(response_url: string, message: string) {
     method: "POST",
     body: JSON.stringify({
       response_type: "ephemeral",
+      replace_original: "true",
       text: message,
     }),
   });
@@ -238,6 +239,35 @@ export async function stageDMConfession(
   }
 }
 
+export async function reviveConfessions() {}
+
+export async function postStagingMessage(
+  id: number,
+  text: string
+): Promise<string> {
+  console.log(`Posting message to staging channel...`);
+  const staging_message = await web.chat.postMessage({
+    channel: staging_channel,
+    text: "",
+    blocks: new Blocks([
+      new TextSection(new MarkdownText(`(staging) *${id}* ${text}`)),
+      new ActionsSection([
+        new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
+        new ButtonAction(
+          new PlainText(":x: Reject"),
+          "disapprove",
+          "disapprove"
+        ),
+      ]),
+    ]).render(),
+  });
+  if (!staging_message.ok) {
+    throw "Failed to post message to staging channel";
+  }
+  console.log(`Posted message!`);
+  return staging_message.ts as string;
+}
+
 export async function stageConfession(
   message: string,
   uid: string
@@ -263,34 +293,19 @@ export async function stageConfession(
   console.log(`Inserted!`);
   console.log(`Posting message to staging channel...`);
   const fields = record.fields as TableRecord;
-  const staging_message = await web.chat.postMessage({
-    channel: staging_channel,
-    text: "",
-    blocks: new Blocks([
-      new TextSection(
-        new MarkdownText(`(staging) *${fields.id}* ${fields.text}`)
-      ),
-      new ActionsSection([
-        new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
-        new ButtonAction(
-          new PlainText(":x: Reject"),
-          "disapprove",
-          "disapprove"
-        ),
-      ]),
-    ]).render(),
-  });
-  if (!staging_message.ok) {
+  let staging_ts;
+  try {
+    staging_ts = await postStagingMessage(fields.id, fields.text);
+  } catch (e) {
     console.log(`Failed to post message. Rolling back Airtable record...`);
     await record.destroy();
     console.log(`Rolled back changes. Notifying user...`);
-    throw "Failed to post message to staging channel";
+    throw e;
   }
-  console.log(`Posted message!`);
   console.log(`Updating Airtable record...`);
   try {
     await record.patchUpdate({
-      staging_ts: staging_message.ts as string,
+      staging_ts,
     } as Partial<TableRecord>);
   } catch (_) {
     throw "Failed to update Airtable record";
@@ -312,11 +327,11 @@ export async function viewConfession(
   // Check if message is in Airtable
   let records;
   try {
-    records = await (
-      await table.select({
+    records = await table
+      .select({
         filterByFormula: `{staging_ts} = ${staging_ts}`,
       })
-    ).firstPage();
+      .firstPage();
   } catch (_) {
     throw `Failed to fetch Airtable record!`;
   }
