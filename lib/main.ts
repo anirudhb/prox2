@@ -277,6 +277,21 @@ export async function reviveConfessions() {
   console.log(`Restaged all unviewed confessions!`);
 }
 
+function createStagingBlocks(id: number, text: string): TextSection[] {
+  let chunks = [`(staging) *${id}*`];
+  const words = text.split(" ");
+  for (const word of words) {
+    if (chunks[chunks.length - 1].length + word.length + 1 < 3000) {
+      // Add
+      chunks[chunks.length - 1] += ` ${word}`;
+    } else {
+      // New chunk
+      chunks.push(word);
+    }
+  }
+  return chunks.map((chunk) => new TextSection(new MarkdownText(chunk)));
+}
+
 export async function postStagingMessage(
   id: number,
   text: string
@@ -286,7 +301,7 @@ export async function postStagingMessage(
     channel: staging_channel,
     text: "",
     blocks: new Blocks([
-      new TextSection(new MarkdownText(`(staging) *${id}* ${text}`)),
+      ...createStagingBlocks(id, text),
       new ActionsSection([
         new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
         new ButtonAction(
@@ -416,9 +431,7 @@ export async function viewConfession(
         ts: staging_ts,
         text: "",
         blocks: new Blocks([
-          new TextSection(
-            new MarkdownText(`(staging) *${fields.id}* ${fields.text}`)
-          ),
+          ...createStagingBlocks(fields.id, fields.text),
           new TextSection(new MarkdownText(statusText)),
         ]).render(),
       });
