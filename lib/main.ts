@@ -187,12 +187,17 @@ export async function failRequest(response_url: string, error: string) {
   });
 }
 
-export async function succeedRequest(response_url: string, message: string) {
+export async function succeedRequest(
+  response_url: string,
+  message: string,
+  in_channel: boolean = false
+) {
   console.log(`Succeeding with message: ${message}`);
   await fetch(response_url, {
     method: "POST",
     body: JSON.stringify({
-      response_type: "ephemeral",
+      response_type: in_channel ? "in_channel" : "ephemeral",
+      replace_original: "true",
       text: message,
     }),
   });

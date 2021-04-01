@@ -73,7 +73,8 @@ export default async function handler(
 
   await succeedRequest(
     data.response_url,
-    `:clock130: Reviving confessions... `
+    `:clock130: Reviving confessions...`,
+    true
   );
 
   console.log(`Reviving confessions...`);
@@ -88,7 +89,8 @@ export default async function handler(
   console.log(`Notifying user...`);
   await succeedRequest(
     data.response_url,
-    `:heavy_check_mark: Revived confessions!`
+    `:heavy_check_mark: Revived confessions!`,
+    true
   );
   console.log(`Request success`);
   res.writeHead(200).end();
