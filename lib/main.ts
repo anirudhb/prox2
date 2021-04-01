@@ -247,7 +247,7 @@ export async function reviveConfessions() {
   console.log(`Getting unviewed confessions...`);
   const unviewedConfessions = await table
     .select({
-      filterByFormula: "viewed = FALSE",
+      filterByFormula: "viewed = FALSE()",
     })
     .all();
   for (const record of unviewedConfessions) {
