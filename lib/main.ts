@@ -245,11 +245,16 @@ export async function stageDMConfession(
 
 export async function reviveConfessions() {
   console.log(`Getting unviewed confessions...`);
-  const unviewedConfessions = await table
-    .select({
-      filterByFormula: "viewed = FALSE()",
-    })
-    .all();
+  let unviewedConfessions;
+  try {
+    unviewedConfessions = await table
+      .select({
+        filterByFormula: "viewed = FALSE()",
+      })
+      .all();
+  } catch (_) {
+    throw `Failed to fetch unviewed confessions!`;
+  }
   for (const record of unviewedConfessions) {
     const fields = record.fields as TableRecord;
     console.log(`Removing old message (if any) and ignoring errors...`);
