@@ -26,6 +26,7 @@ import {
   validateNonce,
   verifySignature,
 } from "../../lib/main";
+import { staging_channel } from "../../lib/secrets_wrapper";
 
 export const config = api_config;
 
@@ -58,6 +59,14 @@ export default async function handler(
     console.log(`Invalid request!`);
     res.writeHead(400).end();
     return;
+  }
+
+  // Check that user is in staging channel
+  if (data.channel_id != staging_channel) {
+    await failRequest(
+      data.response_url,
+      `This command can only be used in the staging channel!`
+    );
   }
 
   await succeedRequest(
