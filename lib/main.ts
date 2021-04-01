@@ -193,7 +193,7 @@ export async function succeedRequest(response_url: string, message: string) {
     method: "POST",
     body: JSON.stringify({
       response_type: "ephemeral",
-      replace_original: "true",
+      replace_original: true,
       text: message,
     }),
   });

@@ -69,7 +69,7 @@ export default async function handler(
   try {
     await reviveConfessions();
   } catch (e) {
-    await failRequest(data.response_url, e);
+    await failRequest(data.response_url, JSON.stringify(e));
     res.end();
     return;
   }
