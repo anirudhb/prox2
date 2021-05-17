@@ -42,6 +42,7 @@ import {
   PlainTextInput,
   TextSection,
 } from "../../lib/block_builder";
+import { sanitize } from "../../lib/sanitizer";
 
 export const config = api_config;
 
@@ -377,7 +378,7 @@ You are not the original poster of the confession, so cannot reply anonymously.*
         // Reply in thread
         const r = await web.chat.postMessage({
           channel: confessions_channel,
-          text: data.view.state.values.reply.confession_reply.value,
+          text: sanitize(data.view.state.values.reply.confession_reply.value),
           thread_ts: published_ts,
         });
         if (!r.ok) throw `Failed to reply in thread`;
