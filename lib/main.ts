@@ -25,6 +25,8 @@ import body_parser from "body-parser";
 
 import { NextApiRequest, NextApiResponse, PageConfig } from "next";
 
+import { sanitize } from "./sanitizer";
+
 import {
   token,
   airtable_api_key,
@@ -301,7 +303,7 @@ export async function postStagingMessage(
     channel: staging_channel,
     text: "",
     blocks: new Blocks([
-      ...createStagingBlocks(id, text),
+      ...createStagingBlocks(id, sanitize(text)),
       new ActionsSection([
         new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
         new ButtonAction(
@@ -400,7 +402,7 @@ export async function viewConfession(
       console.log(`Publishing message...`);
       const published_message = await web.chat.postMessage({
         channel: confessions_channel,
-        text: `*${fields.id}*: ${fields.text}`,
+        text: sanitize(`*${fields.id}*: ${fields.text}`),
       });
       if (!published_message.ok) {
         throw `Failed to publish message!`;
