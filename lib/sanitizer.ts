@@ -1,4 +1,4 @@
 export function sanitize(message: string) {
   return message
-    .replace(/@(channel|here|everyone)/g, "<redacted>");
+    .replace(/<!(channel|here|everyone)>/g, "<redacted for mass ping risk>");
 }
