@@ -433,7 +433,7 @@ export async function viewConfession(
         ts: staging_ts,
         text: "",
         blocks: new Blocks([
-          ...createStagingBlocks(fields.id, fields.text),
+          ...createStagingBlocks(fields.id, sanitize(fields.text)),
           new TextSection(new MarkdownText(statusText)),
         ]).render(),
       });
