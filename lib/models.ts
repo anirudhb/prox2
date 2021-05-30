@@ -3,23 +3,23 @@ import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 @Entity()
 export class Confession {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  approved: boolean;
+  approved?: boolean;
   @Column()
-  viewed: boolean;
+  viewed?: boolean;
 
   @Column("text")
-  text: string;
+  text!: string;
 
   @Column()
-  staging_ts: string;
+  staging_ts?: string;
   @Column()
-  published_ts: string;
+  published_ts?: string;
 
   @Column()
-  uid_salt: string;
+  uid_salt!: string;
   @Column()
-  uid_hash: string;
+  uid_hash!: string;
 }
