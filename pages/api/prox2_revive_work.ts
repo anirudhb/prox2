@@ -27,6 +27,7 @@ import {
   verifySignature,
 } from "../../lib/main";
 import { staging_channel } from "../../lib/secrets_wrapper";
+import getRepository from "../../lib/db";
 
 export const config = api_config;
 
@@ -52,6 +53,7 @@ export default async function handler(
     return;
   }
   console.log(`Valid!`);
+  const repo = await getRepository();
 
   console.log(`Validating request...`);
   const data = await validateData(req);
@@ -79,7 +81,7 @@ export default async function handler(
 
   console.log(`Reviving confessions...`);
   try {
-    await reviveConfessions();
+    await reviveConfessions(repo);
   } catch (e) {
     await failRequest(data.response_url, JSON.stringify(e));
     res.end();

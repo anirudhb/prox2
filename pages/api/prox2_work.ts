@@ -26,6 +26,7 @@ import {
   validateNonce,
   verifySignature,
 } from "../../lib/main";
+import getRepository from "../../lib/db";
 
 export const config = api_config;
 
@@ -68,6 +69,7 @@ export default async function handler(
     return;
   }
   console.log(`Valid!`);
+  const repo = await getRepository();
 
   console.log(`Validating request...`);
   const data = await validateData(req);
@@ -99,7 +101,7 @@ export default async function handler(
 
   let confession_id;
   try {
-    confession_id = await stageConfession(data.text, data.user_id);
+    confession_id = await stageConfession(repo, data.text, data.user_id);
   } catch (e) {
     await failRequest(data.response_url, JSON.stringify(e));
     res.end();
