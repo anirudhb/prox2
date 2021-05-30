@@ -147,17 +147,6 @@ export function isCommandData(x: any): x is CommandData {
   );
 }
 
-export interface TableRecord {
-  id: number;
-  approved: boolean;
-  viewed: boolean;
-  text: string;
-  staging_ts: string;
-  published_ts: string;
-  uid_salt: string;
-  uid_hash: string;
-}
-
 export async function validateData(
   req: NextApiRequest
 ): Promise<CommandData | null> {
@@ -199,7 +188,7 @@ function hashUser(uid: string, salt: string): string {
   return crypto.scryptSync(Buffer.from(uid), salt, 64).toString("hex");
 }
 
-export function sameUser(fields: TableRecord, uid: string): boolean {
+export function sameUser(fields: Confession, uid: string): boolean {
   const new_uid_hash = hashUser(uid, fields.uid_salt);
   return crypto.timingSafeEqual(
     Buffer.from(fields.uid_hash),
