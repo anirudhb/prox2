@@ -13,9 +13,12 @@
     "body-parser": "1.19.0",
     "emojis-keywords": "2.0.0",
     "next": "10.2.3",
+    "pg": "^8.6.0",
     "react": "17.0.2",
     "react-dom": "17.0.2",
-    "source-map-support": "0.5.19"
+    "reflect-metadata": "^0.1.13",
+    "source-map-support": "0.5.19",
+    "typeorm": "^0.2.32"
   },
   "devDependencies": {
     "@types/body-parser": "1.19.0",
