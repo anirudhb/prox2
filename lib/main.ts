@@ -19,18 +19,18 @@ import "source-map-support/register";
 import crypto from "crypto";
 import https from "https";
 
-import Airtable from "airtable";
+import { Repository } from "typeorm";
 import { WebClient } from "@slack/web-api";
 import body_parser from "body-parser";
 
 import { NextApiRequest, NextApiResponse, PageConfig } from "next";
 
+import { Confession } from "./models";
+
 import { sanitize } from "./sanitizer";
 
 import {
   token,
-  airtable_api_key,
-  airtable_base,
   staging_channel,
   confessions_channel,
   slack_signing_secret,
@@ -116,16 +116,6 @@ export async function setupMiddlewares(
 }
 
 export const web = new WebClient(token);
-
-Airtable.configure({
-  endpointUrl: "https://api.airtable.com",
-  apiKey: airtable_api_key,
-  apiVersion: Airtable.apiVersion,
-  noRetryIfRateLimited: Airtable.noRetryIfRateLimited,
-});
-
-export const base = Airtable.base(airtable_base);
-export const table = base.table("Main");
 
 export interface CommandData {
   token?: string;
@@ -245,35 +235,29 @@ export async function stageDMConfession(
   }
 }
 
-export async function reviveConfessions() {
+export async function reviveConfessions(repository: Repository<Confession>) {
   console.log(`Getting unviewed confessions...`);
   let unviewedConfessions;
   try {
-    unviewedConfessions = await table
-      .select({
-        filterByFormula: "viewed = FALSE()",
-      })
-      .all();
+    unviewedConfessions = await repository.find({ viewed: false });
   } catch (_) {
     throw `Failed to fetch unviewed confessions!`;
   }
   for (const record of unviewedConfessions) {
-    const fields = record.fields as TableRecord;
     console.log(`Removing old message (if any) and ignoring errors...`);
-    if (fields.staging_ts) {
+    if (record.staging_ts) {
       await web.chat.delete({
         channel: staging_channel,
-        ts: fields.staging_ts,
+        ts: record.staging_ts,
       });
     }
-    const newTs = await postStagingMessage(fields.id, fields.text);
+    const newTs = await postStagingMessage(record.id, record.text);
     console.log(`Updating record...`);
     try {
-      await record.patchUpdate({
-        staging_ts: newTs,
-      } as Partial<TableRecord>);
+      record.staging_ts = newTs;
+      await repository.save(record);
     } catch (_) {
-      throw `Failed to update Airtable record!`;
+      throw `Failed to update Postgres record!`;
     }
   }
   console.log(`Restaged all unviewed confessions!`);
@@ -322,6 +306,7 @@ export async function postStagingMessage(
 }
 
 export async function stageConfession(
+  repository: Repository<Confession>,
   message: string,
   uid: string
 ): Promise<number> {
@@ -331,43 +316,42 @@ export async function stageConfession(
   console.log(`Hashing UID...`);
   const uid_hash = hashUser(uid, uid_salt);
   console.log(`Salt = ${uid_salt} hashed = ${uid_hash}`);
-  console.log(`Inserting into Airtable...`);
+  console.log(`Inserting into Postgres...`);
   let record;
   try {
-    record = await table.create({
+    record = await repository.save({
       text: message,
       approved: false,
       uid_salt,
       uid_hash,
-    } as Partial<TableRecord>);
+    });
   } catch (_) {
-    throw "Failed to insert Airtable record";
+    throw "Failed to insert Postgres record";
   }
   console.log(`Inserted!`);
   console.log(`Posting message to staging channel...`);
-  const fields = record.fields as TableRecord;
   let staging_ts;
   try {
-    staging_ts = await postStagingMessage(fields.id, fields.text);
+    staging_ts = await postStagingMessage(record.id, record.text);
   } catch (e) {
-    console.log(`Failed to post message. Rolling back Airtable record...`);
-    await record.destroy();
+    console.log(`Failed to post message. Rolling back Postgres record...`);
+    await repository.remove(record);
     console.log(`Rolled back changes. Notifying user...`);
     throw e;
   }
-  console.log(`Updating Airtable record...`);
+  console.log(`Updating Postgres record...`);
   try {
-    await record.patchUpdate({
-      staging_ts,
-    } as Partial<TableRecord>);
+    record.staging_ts = staging_ts;
+    await repository.save(record);
   } catch (_) {
-    throw "Failed to update Airtable record";
+    throw "Failed to update Postgres record";
   }
   console.log(`Updated!`);
-  return fields.id;
+  return record.id;
 }
 
 export async function viewConfession(
+  repository: Repository<Confession>,
   staging_ts: string,
   approved: boolean,
   reviewer_uid: string
@@ -377,73 +361,67 @@ export async function viewConfession(
       approved ? "Approving" : "Disapproving"
     } confession with staging_ts=${staging_ts}...`
   );
-  // Check if message is in Airtable
-  let records;
+  // Check if message is in Postgres
+  let record;
   try {
-    records = await table
-      .select({
-        filterByFormula: `{staging_ts} = ${staging_ts}`,
-      })
-      .firstPage();
+    record = await repository.findOne({
+      staging_ts,
+    });
   } catch (_) {
-    throw `Failed to fetch Airtable record!`;
+    throw `Failed to fetch Postgres record!`;
   }
-  if (records.length == 1) {
-    const record = records[0];
-    const fields = record.fields as TableRecord;
-    if (fields.viewed) {
-      // return, already viewed
-      console.log(`Record already viewed, returning`);
-      return;
-    }
-    // Publish record and update
-    let ts = null;
-    if (approved) {
-      console.log(`Publishing message...`);
-      const published_message = await web.chat.postMessage({
-        channel: confessions_channel,
-        text: sanitize(`*${fields.id}*: ${fields.text}`),
-      });
-      if (!published_message.ok) {
-        throw `Failed to publish message!`;
-      }
-      ts = published_message.ts as string;
-      console.log(`Published message!`);
-    }
-    console.log(`Updating Airtable record...`);
-    try {
-      await record.patchUpdate({
-        approved,
-        viewed: true,
-        published_ts: ts,
-      } as Partial<TableRecord>);
-    } catch (_) {
-      throw `Failed to update Airtable record`;
-    }
-    console.log(`Updated!`);
-    console.log(`Updating staging message...`);
-    try {
-      const statusText = `${
-        approved ? `:true: Approved` : `:x: Rejected`
-      } by <@${reviewer_uid}> <!date^${Math.floor(
-        Date.now() / 1000
-      )}^{date_short_pretty} at {time}|${new Date().toISOString()}>.`;
-      await web.chat.update({
-        channel: staging_channel,
-        ts: staging_ts,
-        text: "",
-        blocks: new Blocks([
-          ...createStagingBlocks(fields.id, sanitize(fields.text)),
-          new TextSection(new MarkdownText(statusText)),
-        ]).render(),
-      });
-    } catch (_) {
-      throw `Failed to update staging message`;
-    }
-    console.log(`Deleted!`);
-  } else {
-    throw `Failed to find single record with staging_ts=${staging_ts}, got ${records.length}`;
+  if (record === undefined) {
+    throw `Failed to find single Postgres record with staging_ts=${staging_ts}`;
   }
+  if (record.viewed) {
+    // return, already viewed
+    console.log(`Record already viewed, returning`);
+    return;
+  }
+  // Publish record and update
+  let ts = null;
+  if (approved) {
+    console.log(`Publishing message...`);
+    const published_message = await web.chat.postMessage({
+      channel: confessions_channel,
+      text: sanitize(`*${record.id}*: ${record.text}`),
+    });
+    if (!published_message.ok) {
+      throw `Failed to publish message!`;
+    }
+    ts = published_message.ts as string;
+    console.log(`Published message!`);
+  }
+  console.log(`Updating Postgres record...`);
+  try {
+    record.approved = approved;
+    record.viewed = true;
+    record.published_ts = ts ?? "";
+    await repository.save(record);
+  } catch (_) {
+    throw `Failed to update Postgres record`;
+  }
+  console.log(`Updated!`);
+  console.log(`Updating staging message...`);
+  try {
+    const statusText = `${
+      approved ? `:true: Approved` : `:x: Rejected`
+    } by <@${reviewer_uid}> <!date^${Math.floor(
+      Date.now() / 1000
+    )}^{date_short_pretty} at {time}|${new Date().toISOString()}>.`;
+    await web.chat.update({
+      channel: staging_channel,
+      ts: staging_ts,
+      text: "",
+      blocks: new Blocks([
+        ...createStagingBlocks(record.id, sanitize(record.text)),
+        new TextSection(new MarkdownText(statusText)),
+      ]).render(),
+    });
+  } catch (_) {
+    throw `Failed to update staging message`;
+  }
+  console.log(`Deleted!`);
 }
 
 export function verifySignature(req: NextApiRequest): boolean {
