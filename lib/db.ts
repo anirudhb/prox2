@@ -1,17 +1,15 @@
 import "reflect-metadata";
-import { createConnection, Connection } from "typeorm";
+import { createConnection, Repository } from "typeorm";
 import { Confession } from "./models";
 
-export default async function getConnection(): Promise<Connection> {
-  return await createConnection({
+import { postgres_url } from "./secrets_wrapper";
+
+export default async function getRepository(): Promise<Repository<Confession>> {
+  return (await createConnection({
     type: "postgres",
-    host: "FIXME",
-    port: 9999,
-    username: "FIXME",
-    password: "FIXME",
-    database: "FIXME",
+    url: postgres_url,
     entities: [Confession],
     synchronize: true,
     logging: false,
-  });
+  })).getRepository(Confession);
 }

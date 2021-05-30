@@ -25,6 +25,7 @@ export let airtable_base: string;
 export let staging_channel: string;
 export let confessions_channel: string;
 export let slack_signing_secret: string;
+export let postgres_url: string;
 
 function check_env(name: string): string {
   const val = process.env[name];
@@ -43,6 +44,7 @@ try {
   staging_channel = secrets.staging_channel;
   confessions_channel = secrets.confessions_channel;
   slack_signing_secret = secrets.slack_signing_secret;
+  postgres_url = secrets.postgres_url;
 } catch (_) {
   token = check_env("SLACK_BOT_TOKEN");
   airtable_api_key = check_env("AIRTABLE_API_KEY");
@@ -50,4 +52,5 @@ try {
   staging_channel = check_env("STAGING_CHANNEL_ID");
   confessions_channel = check_env("CONFESSIONS_CHANNEL_ID");
   slack_signing_secret = check_env("SLACK_SIGNING_SECRET");
+  postgres_url = check_env("POSTGRES_URL");
 }
