@@ -22,6 +22,7 @@ import fs from "fs";
 export let token: string;
 export let airtable_api_key: string;
 export let airtable_base: string;
+export let airtable_table: string;
 export let staging_channel: string;
 export let confessions_channel: string;
 export let slack_signing_secret: string;
@@ -41,6 +42,7 @@ try {
   token = secrets.token;
   airtable_api_key = secrets.airtable_api_key;
   airtable_base = secrets.airtable_base;
+  airtable_table = secrets.airtable_table;
   staging_channel = secrets.staging_channel;
   confessions_channel = secrets.confessions_channel;
   slack_signing_secret = secrets.slack_signing_secret;
@@ -49,6 +51,7 @@ try {
   token = check_env("SLACK_BOT_TOKEN");
   airtable_api_key = check_env("AIRTABLE_API_KEY");
   airtable_base = check_env("AIRTABLE_BASE_ID");
+  airtable_table = check_env("AIRTABLE_TABLE");
   staging_channel = check_env("STAGING_CHANNEL_ID");
   confessions_channel = check_env("CONFESSIONS_CHANNEL_ID");
   slack_signing_secret = check_env("SLACK_SIGNING_SECRET");
