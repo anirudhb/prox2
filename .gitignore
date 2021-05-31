@@ -37,3 +37,9 @@ ngrok.exe
 ngrok
 
 secrets.json
+
+# typescript outputs
+*.jsx
+*.jsx.map
+*.js
+*.js.map
