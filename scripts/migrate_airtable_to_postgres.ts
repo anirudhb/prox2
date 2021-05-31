@@ -9,6 +9,7 @@ import {
 } from './../lib/secrets_wrapper.js';
 
 import Airtable from 'airtable';
+import {Confession} from './../lib/models.js';
 
 Airtable.configure({
     endpointUrl: 'https://api.airtable.com',
@@ -39,15 +40,14 @@ const table = base.table(airtable_table);
                     console.log('Retrieved', record.get('id'));
 
                     await repo.save({
-                        // `typeorm` requires all fields to be here for some reason, even though they should be optional, so I am just setting them to `false` or `''`.
-                        text: 'message',
-                        approved: false,
-                        viewed: false,
-                        uid_salt: '',
-                        uid_hash: '',
-                        staging_ts: '',
-                        published_ts: '',
-                        ...record.fields,
+                        text: record.fields.text ?? 'message',
+                        approved: record.fields.approved ?? false,
+                        viewed: record.fields.viewed ?? false,
+                        uid_salt: record.fields.uid_salt ?? '',
+                        uid_hash: record.fields.uid_hash ?? '',
+                        staging_ts: record.fields.staging_ts ?? '',
+                        published_ts: record.fields.published_ts ?? '',,
+                        id: record.fields.id,
                     });
                 });
 
