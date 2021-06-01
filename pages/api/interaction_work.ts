@@ -16,6 +16,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { In } from "typeorm";
 import { Block, KnownBlock } from "@slack/web-api";
 
 import {
@@ -25,8 +26,6 @@ import {
   setupMiddlewares,
   stageConfession,
   succeedRequest,
-  table,
-  TableRecord,
   validateNonce,
   verifySignature,
   viewConfession,
@@ -42,6 +41,7 @@ import {
   PlainTextInput,
   TextSection,
 } from "../../lib/block_builder";
+import getRepository from "../../lib/db";
 import { sanitize } from "../../lib/sanitizer";
 
 export const config = api_config;
@@ -150,6 +150,7 @@ export default async function handler(
     return;
   }
   console.log(`Valid!`);
+  const repo = await getRepository();
   const data = JSON.parse(
     (req.body as { payload: string }).payload
   ) as SlackInteractionPayload;
@@ -161,10 +162,10 @@ export default async function handler(
       try {
         if (action.value == "approve") {
           console.log(`Approval of message ts=${data.message.ts}`);
-          await viewConfession(data.message.ts, true, data.user.id);
+          await viewConfession(repo, data.message.ts, true, data.user.id);
         } else if (action.value == "disapprove") {
           console.log(`Disapproval of message ts=${data.message.ts}`);
-          await viewConfession(data.message.ts, false, data.user.id);
+          await viewConfession(repo, data.message.ts, false, data.user.id);
         } else if (action.value == "stage") {
           console.log(`Stage of message thread_ts=${data.message.thread_ts}`);
           // Get message contents
@@ -179,7 +180,7 @@ export default async function handler(
           }
           const message_contents = (resp as any).messages[0].text;
           // Stage
-          const id = await stageConfession(message_contents, data.user.id);
+          const id = await stageConfession(repo, message_contents, data.user.id);
           // Edit
           const resp2 = await web.chat.update({
             channel: data.channel.id,
@@ -224,19 +225,13 @@ export default async function handler(
       }
       if (data.callback_id == "reply_anonymous") {
         // try to fetch record
-        const records = await (
-          await table.select({
-            filterByFormula: `{published_ts} = ${data.message.ts}`,
-          })
-        ).firstPage();
-        if (records.length != 1) {
-          throw `Failed to find single record with published_ts=${data.message.ts}, got ${records.length}`;
+        const record = await repo.findOne({published_ts: data.message.ts});
+        if (record === undefined) {
+          throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
         }
-        const record = records[0];
-        const fields = record.fields as TableRecord;
 
         // Check user...
-        if (!sameUser(fields, data.user.id)) {
+        if (!sameUser(record, data.user.id)) {
           await succeedRequest(
             data.response_url,
             "You are not the original poster of the confession, so you cannot reply anonymously."
@@ -248,9 +243,9 @@ export default async function handler(
         const resp = await web.views.open({
           trigger_id: data.trigger_id,
           view: {
-            callback_id: `reply_modal_${fields.published_ts}`,
+            callback_id: `reply_modal_${record.published_ts}`,
             type: "modal",
-            title: new PlainText(`Replying to #${fields.id}`).render(),
+            title: new PlainText(`Replying to #${record.id}`).render(),
             submit: new PlainText("Reply").render(),
             close: new PlainText("Cancel").render(),
             blocks: new Blocks([
@@ -267,19 +262,15 @@ export default async function handler(
         }
       } else if (data.callback_id == "react_anonymous") {
         // try to fetch record
-        const records = await (
-          await table.select({
-            filterByFormula: `OR({published_ts} = '${data.message.ts}', {published_ts} = '${data.message.thread_ts}')`,
-          })
-        ).firstPage();
-        if (records.length != 1) {
-          throw `Failed to find single record with published_ts=${data.message.ts}, got ${records.length}`;
+        let valid_ts = [data.message.ts];
+        if (data.message.thread_ts !== undefined) valid_ts.push(data.message.thread_ts);
+        const record = await repo.findOne({published_ts: In(valid_ts)});
+        if (record === undefined) {
+          throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
         }
-        const record = records[0];
-        const fields = record.fields as TableRecord;
 
         // Check user...
-        if (!sameUser(fields, data.user.id)) {
+        if (!sameUser(record, data.user.id)) {
           await succeedRequest(
             data.response_url,
             "You are not the original poster of the confession, so you cannot react anonymously."
@@ -292,8 +283,8 @@ export default async function handler(
           trigger_id: data.trigger_id,
           view: {
             type: "modal",
-            callback_id: `react_modal_${fields.published_ts}_${data.message.ts}`,
-            title: new PlainText(`Reacting to #${fields.id}`).render(),
+            callback_id: `react_modal_${record.published_ts}_${data.message.ts}`,
+            title: new PlainText(`Reacting to #${record.id}`).render(),
             submit: new PlainText("React").render(),
             close: new PlainText("Cancel").render(),
             blocks: new Blocks([
@@ -330,19 +321,13 @@ export default async function handler(
         if (!published_ts) throw "Failed to get regex group";
 
         // try to fetch record
-        const records = await (
-          await table.select({
-            filterByFormula: `{published_ts} = ${published_ts}`,
-          })
-        ).firstPage();
-        if (records.length != 1) {
-          throw `Failed to find single record with published_ts=${published_ts}, got ${records.length}`;
+        const record = await repo.findOne({published_ts});
+        if (record === undefined) {
+          throw `Failed to find single Postgres record with published_ts=${published_ts}`;
         }
-        const record = records[0];
-        const fields = record.fields as TableRecord;
 
         // Check user...
-        if (!sameUser(fields, data.user.id)) {
+        if (!sameUser(record, data.user.id)) {
           // update view
           res.json({
             response_action: "update",
@@ -394,19 +379,13 @@ You are not the original poster of the confession, so cannot reply anonymously.*
         if (!published_ts || !thread_ts) throw "Failed to get regex group";
 
         // try to fetch record
-        const records = await (
-          await table.select({
-            filterByFormula: `{published_ts} = ${published_ts}`,
-          })
-        ).firstPage();
-        if (records.length != 1) {
-          throw `Failed to find single record with published_ts=${published_ts}, got ${records.length}`;
+        const record = await repo.findOne({published_ts});
+        if (record === undefined) {
+          throw `Failed to find single Postgres record with published_ts=${published_ts}`;
         }
-        const record = records[0];
-        const fields = record.fields as TableRecord;
 
         // Check user...
-        if (!sameUser(fields, data.user.id)) {
+        if (!sameUser(record, data.user.id)) {
           // update view
           res.json({
             response_action: "update",
