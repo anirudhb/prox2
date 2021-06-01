@@ -235,10 +235,14 @@ export async function reviveConfessions(repository: Repository<Confession>) {
   for (const record of unviewedConfessions) {
     console.log(`Removing old message (if any) and ignoring errors...`);
     if (record.staging_ts) {
-      await web.chat.delete({
-        channel: staging_channel,
-        ts: record.staging_ts,
-      });
+      try {
+        await web.chat.delete({
+          channel: staging_channel,
+          ts: record.staging_ts,
+        });
+      } catch (_) {
+        console.log(`Warning: failed to delete staging message... continuing anyways`);
+      }
     }
     const newTs = await postStagingMessage(record.id, record.text);
     console.log(`Updating record...`);
