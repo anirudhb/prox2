@@ -1,0 +1,59 @@
+_metadata:
+  major_version: 1
+  minor_version: 1
+display_information:
+  name: Prox2
+  description: "Submit confessions to me anonymously. Type /prox2 in #confessions
+    to get started!"
+  background_color: "#1a49d6"
+features:
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+  bot_user:
+    display_name: Prox2
+    always_online: false
+  shortcuts:
+    - name: React anonymously
+      type: message
+      callback_id: react_anonymous
+      description: React to a message anonymously
+    - name: Reply anonymously
+      type: message
+      callback_id: reply_anonymous
+      description: Reply to a message anonymously
+  slash_commands:
+    - command: /prox2
+      url: https://prox2.vercel.app/api/prox2
+      description: Submit a confession anonymously
+      usage_hint: "[message]"
+      should_escape: true
+    - command: /prox2-revive
+      url: https://prox2.vercel.app/api/prox2_revive
+      description: Revives unviewed confessions
+      should_escape: true
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - commands
+      - emoji:read
+      - im:history
+      - im:read
+      - im:write
+      - reactions:write
+      - users:read
+      - mpim:write
+settings:
+  event_subscriptions:
+    request_url: https://prox2.vercel.app/api/events
+    bot_events:
+      - message.im
+  interactivity:
+    is_enabled: true
+    request_url: https://prox2.vercel.app/api/interaction
+    message_menu_options_url: https://prox2.vercel.app/api/emoji_suggest
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  is_hosted: false
