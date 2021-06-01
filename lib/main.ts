@@ -309,8 +309,11 @@ export async function stageConfession(
   let record;
   try {
     record = await repository.save({
-      text: message,
       approved: false,
+      viewed: false,
+      text: message,
+      staging_ts: "",
+      published_ts: "",
       uid_salt,
       uid_hash,
     });
