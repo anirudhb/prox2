@@ -8,7 +8,7 @@
     "type-check": "tsc"
   },
   "dependencies": {
-    "@slack/web-api": "6.2.3",
+    "@slack/web-api": "6.2.4",
     "body-parser": "1.19.0",
     "emojis-keywords": "2.0.0",
     "next": "10.2.3",
