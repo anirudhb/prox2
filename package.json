@@ -20,9 +20,9 @@
     "typeorm": "0.2.34"
   },
   "devDependencies": {
-    "@babel/core": "7.14.3",
-    "@babel/plugin-proposal-class-properties": "7.13.0",
-    "@babel/plugin-proposal-decorators": "7.14.2",
+    "@babel/core": "7.14.5",
+    "@babel/plugin-proposal-class-properties": "7.14.5",
+    "@babel/plugin-proposal-decorators": "7.14.5",
     "@types/body-parser": "1.19.0",
     "@types/node": "14.17.3",
     "@types/react": "17.0.9",
