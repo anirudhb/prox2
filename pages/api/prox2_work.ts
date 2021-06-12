@@ -111,7 +111,7 @@ export default async function handler(
   console.log(`Notifying user...`);
   await succeedRequest(
     data.response_url,
-    `Your message has been staged as confession #${confession_id} and will appear here after review by the confessions team!`
+    `Your message has been staged as confession #${confession_id} and will appear in <#CNMU9L92Q> if approved by the confessions review team!`
   );
   console.log(`Request success`);
   res.writeHead(200).end();
