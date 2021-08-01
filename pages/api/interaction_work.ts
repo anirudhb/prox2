@@ -14,11 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import { NextApiRequest, NextApiResponse } from "next";
-
-import { In } from "typeorm";
 import { Block, KnownBlock } from "@slack/web-api";
-
+import { NextApiRequest, NextApiResponse } from "next";
+import { In } from "typeorm";
+import {
+  Blocks,
+  ExternalSelectAction,
+  InputSection,
+  MarkdownText,
+  PlainText,
+  PlainTextInput,
+  TextSection,
+} from "../../lib/block_builder";
+import getRepository from "../../lib/db";
 import {
   api_config,
   failRequest,
@@ -31,18 +39,8 @@ import {
   viewConfession,
   web,
 } from "../../lib/main";
-import { confessions_channel } from "../../lib/secrets_wrapper";
-import {
-  Blocks,
-  ExternalSelectAction,
-  InputSection,
-  MarkdownText,
-  PlainText,
-  PlainTextInput,
-  TextSection,
-} from "../../lib/block_builder";
-import getRepository from "../../lib/db";
 import { sanitize } from "../../lib/sanitizer";
+import { confessions_channel } from "../../lib/secrets_wrapper";
 
 export const config = api_config;
 
@@ -180,7 +178,11 @@ export default async function handler(
           }
           const message_contents = (resp as any).messages[0].text;
           // Stage
-          const id = await stageConfession(repo, message_contents, data.user.id);
+          const id = await stageConfession(
+            repo,
+            message_contents,
+            data.user.id
+          );
           // Edit
           const resp2 = await web.chat.update({
             channel: data.channel.id,
@@ -225,7 +227,7 @@ export default async function handler(
       }
       if (data.callback_id == "reply_anonymous") {
         // try to fetch record
-        const record = await repo.findOne({published_ts: data.message.ts});
+        const record = await repo.findOne({ published_ts: data.message.ts });
         if (record === undefined) {
           throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
         }
@@ -263,8 +265,9 @@ export default async function handler(
       } else if (data.callback_id == "react_anonymous") {
         // try to fetch record
         let valid_ts = [data.message.ts];
-        if (data.message.thread_ts !== undefined) valid_ts.push(data.message.thread_ts);
-        const record = await repo.findOne({published_ts: In(valid_ts)});
+        if (data.message.thread_ts !== undefined)
+          valid_ts.push(data.message.thread_ts);
+        const record = await repo.findOne({ published_ts: In(valid_ts) });
         if (record === undefined) {
           throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
         }
@@ -301,6 +304,32 @@ export default async function handler(
           },
         });
         if (!modal_res.ok) throw `Failed to open modal`;
+      } else if (data.callback_id == "delete_confession") {
+        // try to fetch record
+        let valid_ts = [data.message.ts];
+        if (data.message.thread_ts !== undefined)
+          valid_ts.push(data.message.thread_ts);
+        const record = await repo.findOne({ published_ts: In(valid_ts) });
+        if (record === undefined) {
+          throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
+        }
+
+        // Check user...
+        if (!sameUser(record, data.user.id)) {
+          await succeedRequest(
+            data.response_url,
+            "You are not the original poster of the confession, so you cannot react anonymously."
+          );
+          res.writeHead(200).end();
+          return;
+        }
+        await web.chat.delete({
+          channel: confessions_channel,
+          ts: data.message.thread_ts!,
+        });
+        await succeedRequest(data.response_url, "Whoosh. It's gone now!");
+        res.writeHead(200).end();
+        return;
       } else {
         console.log(`Unknown callback ${data.callback_id}`);
       }
@@ -321,7 +350,7 @@ export default async function handler(
         if (!published_ts) throw "Failed to get regex group";
 
         // try to fetch record
-        const record = await repo.findOne({published_ts});
+        const record = await repo.findOne({ published_ts });
         if (record === undefined) {
           throw `Failed to find single Postgres record with published_ts=${published_ts}`;
         }
@@ -379,7 +408,7 @@ You are not the original poster of the confession, so cannot reply anonymously.*
         if (!published_ts || !thread_ts) throw "Failed to get regex group";
 
         // try to fetch record
-        const record = await repo.findOne({published_ts});
+        const record = await repo.findOne({ published_ts });
         if (record === undefined) {
           throw `Failed to find single Postgres record with published_ts=${published_ts}`;
         }
