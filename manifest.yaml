@@ -23,6 +23,11 @@ features:
       type: message
       callback_id: reply_anonymous
       description: Reply to a message anonymously
+    - name: Delete confession
+      type: message
+      callback_id: delete_confession
+      description: Deletes your confession
+
   slash_commands:
     - command: /prox2
       url: https://prox2.vercel.app/api/prox2
