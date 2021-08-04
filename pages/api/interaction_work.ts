@@ -327,6 +327,7 @@ export default async function handler(
           channel: confessions_channel,
           ts: data.message.thread_ts!,
         });
+        await repo.delete(record);
         await succeedRequest(data.response_url, "Whoosh. It's gone now!");
         res.writeHead(200).end();
         return;
