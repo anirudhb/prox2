@@ -323,14 +323,22 @@ export default async function handler(
           res.writeHead(200).end();
           return;
         }
-        await web.chat.delete({
-          channel: confessions_channel,
-          ts: data.message.thread_ts!,
-        });
-        await repo.delete(record);
-        await succeedRequest(data.response_url, "Whoosh. It's gone now!");
-        res.writeHead(200).end();
-        return;
+
+        try {
+          await web.chat.delete({
+            channel: confessions_channel,
+            ts: data.message.thread_ts!,
+          });
+          await repo.delete(record);
+          await succeedRequest(data.response_url, "Whoosh. It's gone now!");
+        } catch (err) {
+          console.error(`Couldn't delete confession. ${err}`);
+          await succeedRequest(
+            data.response_url,
+            "Couldn't delete confession."
+          );
+        }
+        return res.writeHead(200).end();
       } else {
         console.log(`Unknown callback ${data.callback_id}`);
       }
