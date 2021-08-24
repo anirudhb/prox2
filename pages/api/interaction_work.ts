@@ -459,7 +459,7 @@ You are not the original poster of the confession, so cannot reply anonymously.*
         });
         if (!react_res.ok) throw `Failed to react`;
       } else if (data.view.callback_id.startsWith("approve_tw")) {
-        const staging_ts_res = /^reply_modal_(.*)$/.exec(data.view.callback_id);
+        const staging_ts_res = /^approve_tw_(.*)$/.exec(data.view.callback_id);
         if (!staging_ts_res) throw "Failed to exec regex";
         const staging_ts = staging_ts_res[1];
         if (!staging_ts) throw "Failed to get regex group";
