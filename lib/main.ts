@@ -358,7 +358,7 @@ export async function viewConfession(
   staging_ts: string,
   approved: boolean,
   reviewer_uid: string,
-  tw_text = ""
+  tw_text: string | null = null,
 ): Promise<void> {
   console.log(
     `${
