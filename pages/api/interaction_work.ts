@@ -464,11 +464,19 @@ You are not the original poster of the confession, so cannot reply anonymously.*
         const staging_ts = staging_ts_res[1];
         if (!staging_ts) throw "Failed to get regex group";
 
+        const record = await repo.findOne({ staging_ts });
+        if (record === undefined) {
+          throw `Failed to find single Postgres record with staging_ts=${staging_ts}`;
+        }
+
         // quick assert for typeck
         if (
           data.view.state.values.tw.approve_tw_input.type != "plain_text_input"
         )
           return;
+
+        record.tw_text = data.view.state.values.tw.approve_tw_input.value;
+        await repo.save(record);
 
         await viewConfession(
           repo,
@@ -478,17 +486,13 @@ You are not the original poster of the confession, so cannot reply anonymously.*
           data.view.state.values.tw.approve_tw_input.value
         );
 
-        // try to fetch record
-        const record = await repo.findOne({ staging_ts });
-        if (record === undefined) {
-          throw `Failed to find single Postgres record with staging_ts=${staging_ts}`;
-        }
+        const updatedRecord = await repo.findOne({ staging_ts });
 
         // Reply in thread
         const r = await web.chat.postMessage({
           channel: confessions_channel,
-          text: sanitize(record.text),
-          thread_ts: record.published_ts,
+          text: sanitize(updatedRecord.text),
+          thread_ts: updatedRecord.published_ts,
         });
         if (!r.ok) throw `Failed to reply in thread`;
       }
