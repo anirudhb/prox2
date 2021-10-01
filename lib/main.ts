@@ -389,8 +389,8 @@ export async function viewConfession(
     const published_message = await web.chat.postMessage({
       channel: confessions_channel,
       text: sanitize(
-        `*${record.id}*: ${tw_text ? "TW: " : ""} ${tw_text ?? record.text} ${
-          tw_text ? ", open thread for more" : ""
+        `*${record.id}*:${tw_text ? " TW:" : ""} ${tw_text ?? record.text} ${
+          tw_text?.trim() ? "— open thread for more" : ""
         }`
       ),
     });
