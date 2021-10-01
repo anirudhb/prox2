@@ -286,14 +286,14 @@ export async function postStagingMessage(
       new ActionsSection([
         new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
         new ButtonAction(
-          new PlainText(":angerydog: Approve with TW"),
-          "approve:tw",
-          "approve:tw"
-        ),
-        new ButtonAction(
           new PlainText(":x: Reject"),
           "disapprove",
           "disapprove"
+        ),
+        new ButtonAction(
+          new PlainText(":angerydog: Approve with TW"),
+          "approve:tw",
+          "approve:tw"
         ),
       ]),
     ]).render(),
@@ -358,7 +358,7 @@ export async function viewConfession(
   staging_ts: string,
   approved: boolean,
   reviewer_uid: string,
-  tw_text: string | null = null,
+  tw_text: string | null = null
 ): Promise<void> {
   console.log(
     `${

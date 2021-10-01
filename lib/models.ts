@@ -12,7 +12,7 @@ export class Confession {
 
   @Column("text")
   text!: string;
-  @Column("tw_text")
+  @Column({ nullable: true })
   tw_text?: string;
 
   @Column()
