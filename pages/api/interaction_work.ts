@@ -491,8 +491,8 @@ You are not the original poster of the confession, so cannot reply anonymously.*
         // Reply in thread
         const r = await web.chat.postMessage({
           channel: confessions_channel,
-          text: `*${updatedRecord.id}:* ${sanitize(updatedRecord.text)}`,
-          thread_ts: updatedRecord.published_ts,
+          text: sanitize(updatedRecord!.text),
+          thread_ts: updatedRecord?.published_ts,
         });
         if (!r.ok) throw `Failed to reply in thread`;
       }

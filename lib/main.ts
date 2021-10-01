@@ -390,7 +390,7 @@ export async function viewConfession(
       channel: confessions_channel,
       text: sanitize(
         `*${record.id}*:${tw_text ? " TW:" : ""} ${tw_text ?? record.text} ${
-          tw_text?.trim() ? "— open thread for more" : ""
+          tw_text?.trim() ? "— open thread to view" : ""
         }`
       ),
     });
