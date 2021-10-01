@@ -166,6 +166,34 @@ export default async function handler(
         } else if (action.value == "disapprove") {
           console.log(`Disapproval of message ts=${data.message.ts}`);
           await viewConfession(repo, data.message.ts, false, data.user.id);
+        } else if (action.value == "approve:tw") {
+          console.log(`Trigger Warning Approval!`);
+          try {
+            const resp = await web.views.open({
+              trigger_id: data.trigger_id,
+              view: {
+                callback_id: `approve_tw_${data.message.ts}`,
+                type: "modal",
+                title: new PlainText(`Approve with TW`).render(),
+                submit: new PlainText("Approve").render(),
+                close: new PlainText("Cancel").render(),
+                blocks: new Blocks([
+                  new InputSection(
+                    new PlainTextInput("approve_tw_input", true),
+                    new PlainText("TW"),
+                    "tw"
+                  ),
+                ]).render(),
+              },
+            });
+            if (!resp.ok) {
+              throw "Failed to open modal";
+            }
+          } catch (e) {
+            await failRequest(data.response_url, JSON.stringify(e));
+            res.writeHead(500).end();
+            return;
+          }
         } else if (action.value == "stage") {
           console.log(`Stage of message thread_ts=${data.message.thread_ts}`);
           // Get message contents
@@ -180,7 +208,11 @@ export default async function handler(
           }
           const message_contents = (resp as any).messages[0].text;
           // Stage
-          const id = await stageConfession(repo, message_contents, data.user.id);
+          const id = await stageConfession(
+            repo,
+            message_contents,
+            data.user.id
+          );
           // Edit
           const resp2 = await web.chat.update({
             channel: data.channel.id,
@@ -225,7 +257,7 @@ export default async function handler(
       }
       if (data.callback_id == "reply_anonymous") {
         // try to fetch record
-        const record = await repo.findOne({published_ts: data.message.ts});
+        const record = await repo.findOne({ published_ts: data.message.ts });
         if (record === undefined) {
           throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
         }
@@ -263,8 +295,9 @@ export default async function handler(
       } else if (data.callback_id == "react_anonymous") {
         // try to fetch record
         let valid_ts = [data.message.ts];
-        if (data.message.thread_ts !== undefined) valid_ts.push(data.message.thread_ts);
-        const record = await repo.findOne({published_ts: In(valid_ts)});
+        if (data.message.thread_ts !== undefined)
+          valid_ts.push(data.message.thread_ts);
+        const record = await repo.findOne({ published_ts: In(valid_ts) });
         if (record === undefined) {
           throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
         }
@@ -321,7 +354,7 @@ export default async function handler(
         if (!published_ts) throw "Failed to get regex group";
 
         // try to fetch record
-        const record = await repo.findOne({published_ts});
+        const record = await repo.findOne({ published_ts });
         if (record === undefined) {
           throw `Failed to find single Postgres record with published_ts=${published_ts}`;
         }
@@ -379,7 +412,7 @@ You are not the original poster of the confession, so cannot reply anonymously.*
         if (!published_ts || !thread_ts) throw "Failed to get regex group";
 
         // try to fetch record
-        const record = await repo.findOne({published_ts});
+        const record = await repo.findOne({ published_ts });
         if (record === undefined) {
           throw `Failed to find single Postgres record with published_ts=${published_ts}`;
         }
@@ -425,6 +458,43 @@ You are not the original poster of the confession, so cannot reply anonymously.*
           timestamp: thread_ts,
         });
         if (!react_res.ok) throw `Failed to react`;
+      } else if (data.view.callback_id.startsWith("approve_tw")) {
+        const staging_ts_res = /^approve_tw_(.*)$/.exec(data.view.callback_id);
+        if (!staging_ts_res) throw "Failed to exec regex";
+        const staging_ts = staging_ts_res[1];
+        if (!staging_ts) throw "Failed to get regex group";
+
+        const record = await repo.findOne({ staging_ts });
+        if (record === undefined) {
+          throw `Failed to find single Postgres record with staging_ts=${staging_ts}`;
+        }
+
+        // quick assert for typeck
+        if (
+          data.view.state.values.tw.approve_tw_input.type != "plain_text_input"
+        )
+          return;
+
+        record.tw_text = data.view.state.values.tw.approve_tw_input.value;
+        await repo.save(record);
+
+        await viewConfession(
+          repo,
+          staging_ts,
+          true,
+          data.user.id,
+          data.view.state.values.tw.approve_tw_input.value
+        );
+
+        const updatedRecord = await repo.findOne({ staging_ts });
+
+        // Reply in thread
+        const r = await web.chat.postMessage({
+          channel: confessions_channel,
+          text: sanitize(updatedRecord!.text),
+          thread_ts: updatedRecord?.published_ts,
+        });
+        if (!r.ok) throw `Failed to reply in thread`;
       }
     } catch (e) {
       console.log(e);

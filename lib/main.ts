@@ -241,7 +241,9 @@ export async function reviveConfessions(repository: Repository<Confession>) {
           ts: record.staging_ts,
         });
       } catch (_) {
-        console.log(`Warning: failed to delete staging message... continuing anyways`);
+        console.log(
+          `Warning: failed to delete staging message... continuing anyways`
+        );
       }
     }
     const newTs = await postStagingMessage(record.id, record.text);
@@ -287,6 +289,11 @@ export async function postStagingMessage(
           new PlainText(":x: Reject"),
           "disapprove",
           "disapprove"
+        ),
+        new ButtonAction(
+          new PlainText(":angerydog: Approve with TW"),
+          "approve:tw",
+          "approve:tw"
         ),
       ]),
     ]).render(),
@@ -350,7 +357,8 @@ export async function viewConfession(
   repository: Repository<Confession>,
   staging_ts: string,
   approved: boolean,
-  reviewer_uid: string
+  reviewer_uid: string,
+  tw_text: string | null = null
 ): Promise<void> {
   console.log(
     `${
@@ -380,7 +388,11 @@ export async function viewConfession(
     console.log(`Publishing message...`);
     const published_message = await web.chat.postMessage({
       channel: confessions_channel,
-      text: sanitize(`*${record.id}*: ${record.text}`),
+      text: sanitize(
+        `*${record.id}*:${tw_text ? " TW:" : ""} ${tw_text ?? record.text} ${
+          tw_text?.trim() ? "— open thread to view" : ""
+        }`
+      ),
     });
     if (!published_message.ok) {
       throw `Failed to publish message!`;
@@ -438,7 +450,7 @@ export function verifySignature(req: NextApiRequest): boolean {
     );
     return false;
   }
-  let rawBody = ((req as unknown) as { rawBody: string }).rawBody;
+  let rawBody = (req as unknown as { rawBody: string }).rawBody;
   // if (!rawBody || rawBody.length <= 0) {
   //     rawBody = JSON.stringify(req.body);
   // }
@@ -483,7 +495,7 @@ export async function forwardReq(req: NextApiRequest) {
   });
 
   await new Promise((resolve) => {
-    req2.end(((req as unknown) as { rawBody: string }).rawBody, () => {
+    req2.end((req as unknown as { rawBody: string }).rawBody, () => {
       resolve(null);
     });
   });

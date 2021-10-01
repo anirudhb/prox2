@@ -12,6 +12,8 @@ export class Confession {
 
   @Column("text")
   text!: string;
+  @Column({ nullable: true })
+  tw_text?: string;
 
   @Column()
   staging_ts?: string;
