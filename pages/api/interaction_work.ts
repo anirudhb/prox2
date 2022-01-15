@@ -497,6 +497,54 @@ You are not the original poster of the confession, so cannot reply anonymously.*
           timestamp: thread_ts,
         });
         if (!react_res.ok) throw `Failed to react`;
+      } else if (data.view.callback_id.startsWith("reject")) {
+        const staging_ts_user_res = /^reject_(.*)_(.*)$/.exec(
+          data.view.callback_id
+        );
+        if (!staging_ts_user_res) throw "Failed to exec regex";
+        const [, staging_ts, staging_user] = staging_ts_user_res;
+        if (!staging_ts_user_res) throw "Failed to get regex group";
+        const record = await repo.findOne({ staging_ts });
+        if (record === undefined) {
+          throw `Failed to find single Postgres record with staging_ts=${staging_ts}`;
+        }
+
+        if (
+          (data.view.state.values.reason.reject_reason_select.type as string) !=
+          "static_select"
+        )
+          return;
+
+        record.rejection_text = (
+          data.view.state.values.reason.reject_reason_select as any
+        ).selected_option.text;
+        await repo.save(record);
+
+        await viewConfession(repo, staging_ts, true, data.user.id);
+
+        const reply = await web.chat.postMessage({
+          channel: staging_user,
+          text: `Oh no: Confession ${
+            record.id
+          } was rejected! Reason:\n${record.rejection_text
+            ?.split("\n")
+            .map((z) => `> ${z}`)
+            .join("\n")}`,
+          blocks: new Blocks([
+            new TextSection(
+              new MarkdownText(
+                `:rotating_light: Oh no: Confession *${
+                  record.id
+                }* was rejected! Reason:\n${record.rejection_text
+                  ?.split("\n")
+                  .map((z) => `> ${z}`)
+                  .join("\n")}`
+              )
+            ),
+          ]).render(),
+        });
+
+        if (!reply.ok) throw `Failed to respond to OP`;
       } else if (data.view.callback_id.startsWith("approve_tw")) {
         const staging_ts_res = /^approve_tw_(.*)$/.exec(data.view.callback_id);
         if (!staging_ts_res) throw "Failed to exec regex";
