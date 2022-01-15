@@ -39,10 +39,13 @@ import {
   MarkdownText,
   PlainText,
   PlainTextInput,
+  StaticSelectInput,
+  SelectOption,
   TextSection,
 } from "../../lib/block_builder";
 import getRepository from "../../lib/db";
 import { sanitize } from "../../lib/sanitizer";
+import { resolvePtr } from "dns";
 
 export const config = api_config;
 
@@ -165,7 +168,28 @@ export default async function handler(
           await viewConfession(repo, data.message.ts, true, data.user.id);
         } else if (action.value == "disapprove") {
           console.log(`Disapproval of message ts=${data.message.ts}`);
-          await viewConfession(repo, data.message.ts, false, data.user.id);
+          // await viewConfession(repo, data.message.ts, false, data.user.id);
+          try {
+            const resp = await web.views.open({
+              trigger_id: data.trigger_id,
+              view: {
+                callback_id: `reject_${data.message.ts}_${data.user.id}`,
+                type: "modal",
+                title: new PlainText(`Reject with a reason`).render(),
+                submit: new PlainText("Submit").render(),
+                close: new PlainText("Cancel").render(),
+                blocks: new Blocks([
+                  new InputSection(new StaticSelectInput("reject_reason_select", new PlainText("Pick a reason for rejection"), [
+                    new SelectOption(new PlainText("Duplicate"), "duplicate")
+                  ]), new PlainText("Reason"), "reason")
+                ]).render()
+              }
+            });
+
+            if (!resp.ok) {
+              throw "Failed to open modal.";
+            }
+          }
         } else if (action.value == "approve:tw") {
           console.log(`Trigger Warning Approval!`);
           try {
