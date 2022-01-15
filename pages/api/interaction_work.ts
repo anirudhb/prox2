@@ -116,6 +116,12 @@ interface ViewSubmissionInteraction {
                 selected_option: {
                   value: string;
                 };
+              }
+            | {
+                type: "static_select";
+                selected_option: {
+                  value: string;
+                };
               };
         };
       };
@@ -192,6 +198,11 @@ export default async function handler(
                     ),
                     new PlainText("Reason"),
                     "reason"
+                  ),
+                  new InputSection(
+                    new PlainTextInput("reject_reason_text", true),
+                    new PlainText("Additional Information"),
+                    "text"
                   ),
                 ]).render(),
               },
@@ -518,6 +529,10 @@ You are not the original poster of the confession, so cannot reply anonymously.*
         record.rejection_text = (
           data.view.state.values.reason.reject_reason_select as any
         ).selected_option.text;
+        record.rejection_info = (
+          data.view.state.values.text.reject_reason_text as any
+        ).value;
+
         await repo.save(record);
 
         await viewConfession(repo, staging_ts, true, data.user.id);
@@ -535,10 +550,15 @@ You are not the original poster of the confession, so cannot reply anonymously.*
               new MarkdownText(
                 `:rotating_light: Oh no: Confession *${
                   record.id
-                }* was rejected! Reason:\n${record.rejection_text
-                  ?.split("\n")
-                  .map((z) => `> ${z}`)
-                  .join("\n")}`
+                }* was rejected! Reason: ${record.rejection_text}\n\n${
+                  record.rejection_info
+                    ? "\n\nAdditional information:\n" +
+                      record.rejection_info
+                        ?.split("\n")
+                        .map((z) => `> ${z}`)
+                        .join("\n")
+                    : ""
+                }`
               )
             ),
           ]).render(),
