@@ -120,14 +120,24 @@ export class PlainTextInput extends Input {
   }
 }
 
+export class SelectOption extends Renderable {
+  constructor(private text: PlainText, private value: string) {
+    super();
+  }
+
+  render(): any {
+    return {
+      text: this.text.render(),
+      value: this.value,
+    };
+  }
+}
+
 export class StaticSelectInput extends Input {
   constructor(
     private action_id: string,
     private placeholder: PlainText,
-    private options: Array<{
-      text: PlainText;
-      value: string;
-    }>
+    private options: SelectOption[]
   ) {
     super();
   }
@@ -136,7 +146,7 @@ export class StaticSelectInput extends Input {
     return {
       type: "static_select",
       placeholder: this.placeholder.render(),
-      options: this.options.map((z) => z.text.render()),
+      options: this.options.map((z) => z.render()),
       action_id: this.action_id,
     };
   }
