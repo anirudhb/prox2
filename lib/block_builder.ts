@@ -120,6 +120,28 @@ export class PlainTextInput extends Input {
   }
 }
 
+export class StaticSelectInput extends Input {
+  constructor(
+    private action_id: string,
+    private placeholder: PlainText,
+    private options: Array<{
+      text: PlainText;
+      value: string;
+    }>
+  ) {
+    super();
+  }
+
+  render(): any {
+    return {
+      type: "static_select",
+      placeholder: this.placeholder.render(),
+      options: this.options.map((z) => z.text.render()),
+      action_id: this.action_id,
+    };
+  }
+}
+
 export class InputSection extends Section {
   constructor(
     private input: Input,
