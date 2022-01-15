@@ -179,16 +179,31 @@ export default async function handler(
                 submit: new PlainText("Submit").render(),
                 close: new PlainText("Cancel").render(),
                 blocks: new Blocks([
-                  new InputSection(new StaticSelectInput("reject_reason_select", new PlainText("Pick a reason for rejection"), [
-                    new SelectOption(new PlainText("Duplicate"), "duplicate")
-                  ]), new PlainText("Reason"), "reason")
-                ]).render()
-              }
+                  new InputSection(
+                    new StaticSelectInput(
+                      "reject_reason_select",
+                      new PlainText("Pick a reason for rejection"),
+                      [
+                        new SelectOption(
+                          new PlainText("Duplicate"),
+                          "duplicate"
+                        ),
+                      ]
+                    ),
+                    new PlainText("Reason"),
+                    "reason"
+                  ),
+                ]).render(),
+              },
             });
 
             if (!resp.ok) {
               throw "Failed to open modal.";
             }
+          } catch (e) {
+            await failRequest(data.response_url, JSON.stringify(e));
+            res.writeHead(500).end();
+            return;
           }
         } else if (action.value == "approve:tw") {
           console.log(`Trigger Warning Approval!`);
