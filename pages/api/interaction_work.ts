@@ -172,14 +172,19 @@ export default async function handler(
         if (action.value == "approve") {
           console.log(`Approval of message ts=${data.message.ts}`);
           await viewConfession(repo, data.message.ts, true, data.user.id);
-        } else if (action.value == "disapprove") {
+        } else if (action.value.startsWith("disapprove")) {
           console.log(`Disapproval of message ts=${data.message.ts}`);
-          // await viewConfession(repo, data.message.ts, false, data.user.id);
+          const [, user] = action.value.split("_");
+          if (!user) {
+            console.log("Could not identify user");
+            return;
+          }
+
           try {
             const resp = await web.views.open({
               trigger_id: data.trigger_id,
               view: {
-                callback_id: `reject_${data.message.ts}_${data.user.id}`,
+                callback_id: `reject_${data.message.ts}_${user}`,
                 type: "modal",
                 title: new PlainText(`Reject with a reason`).render(),
                 submit: new PlainText("Submit").render(),
