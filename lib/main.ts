@@ -275,7 +275,8 @@ function createStagingBlocks(id: number, text: string): TextSection[] {
 
 export async function postStagingMessage(
   id: number,
-  text: string
+  text: string,
+  uid: string
 ): Promise<string> {
   console.log(`Posting message to staging channel...`);
   const staging_message = await web.chat.postMessage({
@@ -288,7 +289,7 @@ export async function postStagingMessage(
         new ButtonAction(
           new PlainText(":x: Reject"),
           "disapprove",
-          "disapprove"
+          `disapprove_${uid}`
         ),
         new ButtonAction(
           new PlainText(":angerydog: Approve with TW"),
@@ -335,7 +336,7 @@ export async function stageConfession(
   console.log(`Posting message to staging channel...`);
   let staging_ts;
   try {
-    staging_ts = await postStagingMessage(record.id, record.text);
+    staging_ts = await postStagingMessage(record.id, record.text, uid);
   } catch (e) {
     console.log(`Failed to post message. Rolling back Postgres record...`);
     await repository.remove(record);
