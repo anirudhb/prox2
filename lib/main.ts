@@ -20,7 +20,7 @@ import crypto from "crypto";
 import https from "https";
 
 import { Repository } from "typeorm";
-import { WebClient } from "@slack/web-api";
+import { WebClient, ErrorCode } from "@slack/web-api";
 import body_parser from "body-parser";
 
 import { NextApiRequest, NextApiResponse, PageConfig } from "next";
@@ -224,6 +224,10 @@ export async function stageDMConfession(
   }
 }
 
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export async function reviveConfessions(repository: Repository<Confession>) {
   console.log(`Getting unviewed confessions...`);
   let unviewedConfessions;
@@ -246,7 +250,19 @@ export async function reviveConfessions(repository: Repository<Confession>) {
         );
       }
     }
-    const newTs = await postStagingMessage(record.id, record.text);
+    let newTs;
+    try {
+      newTs = await postStagingMessage(record.id, record.text);
+    } catch (err) {
+	    if (err.code === ErrorCode.RateLimitedError) {
+        console.log(`Rate limited - trying again after ${err.retryAfter} seconds`);
+        await sleep(err.retryAfter * 1000);
+        newTs = await postStagingMessage(record.id, record.text);
+      } else {
+        console.log(`Failed to post staging message... rethrowing error`);
+        throw err;
+      }
+    }
     console.log(`Updating record...`);
     try {
       record.staging_ts = newTs;
