@@ -43,3 +43,5 @@ secrets.json
 *.jsx.map
 *.js
 *.js.map
+
+.idea

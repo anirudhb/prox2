@@ -289,6 +289,23 @@ function createStagingBlocks(id: number, text: string): TextSection[] {
   return chunks.map((chunk) => new TextSection(new MarkdownText(chunk)));
 }
 
+const getStagingMessageBlocks = (id: number, text: string) => new Blocks([
+  ...createStagingBlocks(id, sanitize(text)),
+  new ActionsSection([
+    new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
+    new ButtonAction(
+        new PlainText(":x: Reject"),
+        "disapprove",
+        "disapprove"
+    ),
+    new ButtonAction(
+        new PlainText(":angerydog: Approve with TW"),
+        "approve:tw",
+        "approve:tw"
+    ),
+  ]),
+]).render();
+
 export async function postStagingMessage(
   id: number,
   text: string
@@ -297,22 +314,7 @@ export async function postStagingMessage(
   const staging_message = await web.chat.postMessage({
     channel: staging_channel,
     text: "",
-    blocks: new Blocks([
-      ...createStagingBlocks(id, sanitize(text)),
-      new ActionsSection([
-        new ButtonAction(new PlainText(":true: Approve"), "approve", "approve"),
-        new ButtonAction(
-          new PlainText(":x: Reject"),
-          "disapprove",
-          "disapprove"
-        ),
-        new ButtonAction(
-          new PlainText(":angerydog: Approve with TW"),
-          "approve:tw",
-          "approve:tw"
-        ),
-      ]),
-    ]).render(),
+    blocks: getStagingMessageBlocks(id, text),
   });
   if (!staging_message.ok) {
     throw "Failed to post message to staging channel";
@@ -440,12 +442,123 @@ export async function viewConfession(
       blocks: new Blocks([
         ...createStagingBlocks(record.id, sanitize(record.text)),
         new TextSection(new MarkdownText(statusText)),
+        new ActionsSection([
+            new ButtonAction(
+                new PlainText(":oops: Undo"),
+                "undo",
+                "undo"
+            )
+        ])
       ]).render(),
     });
   } catch (_) {
     throw `Failed to update staging message`;
   }
   console.log(`Deleted!`);
+}
+
+export async function unviewConfession(
+    repository: Repository<Confession>,
+    staging_ts: string,
+    reviewer_uid: string,
+    undoer_uid: string
+): Promise<void> {
+  console.log(`Unviewing confession with staging_ts=${staging_ts}...`);
+  // Check if message is in Postgres
+  let record;
+  try {
+    record = await repository.findOne({
+      staging_ts,
+    });
+  } catch (_) {
+    throw `Failed to fetch Postgres record!`;
+  }
+
+  if (record === undefined) {
+    throw `Failed to find single Postgres record with staging_ts=${staging_ts}`;
+  }
+  if (!record.viewed) {
+    console.log("record wasn't viewed in the first place");
+    return;
+  }
+
+  console.log(`Updating Postgres record...`);
+  const old_approved = record.approved;
+  const old_published_ts = record.published_ts;
+  try {
+    record.viewed = false;
+    record.approved = undefined;
+    record.published_ts = undefined;
+    await repository.save(record);
+  } catch (_) {
+    throw `Failed to update Postgres record`;
+  }
+
+  // delete the message in confessions channel (and responses in thread if they exist)
+  if(old_approved && old_published_ts) {
+    /*console.log(`Deleting thread messages in confessions channel...`);
+    const thread_messages = await web.conversations.replies({
+        channel: confessions_channel,
+        ts: old_published_ts
+    });
+    if (!thread_messages.ok) {
+        throw `Failed to fetch thread messages`;
+    }
+    if(thread_messages.messages) {
+      for (const message of thread_messages.messages) {
+        // idk of an elegant way to check if the user who sent the message is the bot,
+        // so let's just try deleting all of them and ignore failures
+        try {
+          if(!message.ts) break;
+          await web.chat.delete({
+              channel: confessions_channel,
+              ts: message.ts
+          });
+        } catch (_) {
+          console.log(`Failed to delete message in confessions channel`);
+        }
+      }
+    }*/
+    console.log("Deleting message in confessions channel...");
+    try {
+      await web.chat.delete({
+        channel: confessions_channel,
+        ts: old_published_ts
+      });
+    } catch (_) {
+        throw `Failed to delete message in confessions channel`;
+    }
+  }
+
+  // Update staging message
+  console.log(`Updating staging message...`);
+  try {
+    await web.chat.update({
+      channel: staging_channel,
+      ts: staging_ts,
+      text: "",
+      blocks: getStagingMessageBlocks(record.id, record.text),
+    })
+  } catch (_) {
+    throw `Failed to update staging message`;
+  }
+
+  // Log undo
+  console.log(`Logging undo...`);
+  const log_message_text = `:oops: ${old_approved ? "Approval" : "Rejection"} (by <@${reviewer_uid}>) of confession #${record.id} undone by <@${undoer_uid}>`;
+  const log_message = await web.chat.postMessage({
+    channel: staging_channel,
+    text: "",
+    thread_ts: staging_ts,
+    reply_broadcast: true,
+    blocks: new Blocks([
+      new TextSection(new MarkdownText(log_message_text)),
+    ]).render(),
+  });
+  if (!log_message.ok) {
+    console.log(`Failed to post log message!`);
+    throw `Failed to post log message!`;
+  }
 }
 
 export function verifySignature(req: NextApiRequest): boolean {
