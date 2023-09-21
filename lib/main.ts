@@ -164,6 +164,7 @@ export async function failRequest(response_url: string, error: string) {
     body: JSON.stringify({
       response_type: "ephemeral",
       text: error,
+      replace_original: false
     }),
   });
 }
@@ -451,7 +452,9 @@ export async function viewConfession(
         ])
       ]).render(),
     });
-  } catch (_) {
+  } catch (e) {
+    console.log(`Failed to update staging message!`);
+    console.log(JSON.stringify(e));
     throw `Failed to update staging message`;
   }
   console.log(`Deleted!`);
@@ -496,7 +499,7 @@ export async function unviewConfession(
 
   // delete the message in confessions channel (and responses in thread if they exist)
   if(old_approved && old_published_ts) {
-    /*console.log(`Deleting thread messages in confessions channel...`);
+    console.log(`Deleting thread messages in confessions channel...`);
     const thread_messages = await web.conversations.replies({
         channel: confessions_channel,
         ts: old_published_ts
@@ -518,8 +521,8 @@ export async function unviewConfession(
           console.log(`Failed to delete message in confessions channel`);
         }
       }
-    }*/
-    console.log("Deleting message in confessions channel...");
+    }
+    /*console.log("Deleting message in confessions channel...");
     try {
       await web.chat.delete({
         channel: confessions_channel,
@@ -527,7 +530,7 @@ export async function unviewConfession(
       });
     } catch (_) {
         throw `Failed to delete message in confessions channel`;
-    }
+    }*/
   }
 
   // Update staging message
@@ -539,7 +542,8 @@ export async function unviewConfession(
       text: "",
       blocks: getStagingMessageBlocks(record.id, record.text),
     })
-  } catch (_) {
+  } catch (e) {
+    console.log("failed to update staging message!", JSON.stringify(e));
     throw `Failed to update staging message`;
   }
 

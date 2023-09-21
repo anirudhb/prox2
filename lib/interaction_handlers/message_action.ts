@@ -4,6 +4,7 @@ import { Blocks, ExternalSelectAction, InputSection, PlainText, PlainTextInput, 
 import { In } from "typeorm";
 import { InteractionHandler, MessageActionInteraction } from "../../pages/api/interaction_work";
 import getRepository from "../db";
+import { react_modal_id, reply_modal_id } from "./view_submission";
 
 const message_action: InteractionHandler<MessageActionInteraction> = async (data, res) => {
     if (data.channel.id != confessions_channel) {
@@ -28,10 +29,12 @@ const message_action: InteractionHandler<MessageActionInteraction> = async (data
                 return false;
             }
 
+            if(!record.published_ts) throw "No published_ts";
+
             const resp = await web.views.open({
                 trigger_id: data.trigger_id,
                 view: {
-                    callback_id: `reply_modal_${record.published_ts}`,
+                    callback_id: reply_modal_id(record.published_ts),
                     type: "modal",
                     title: new PlainText(`Replying to #${record.id}`).render(),
                     submit: new PlainText("Reply").render(),
@@ -71,11 +74,13 @@ const message_action: InteractionHandler<MessageActionInteraction> = async (data
                 return false;
             }
 
+            if(!record.published_ts) throw "No published_ts";
+
             const modal_res = await web.views.open({
                 trigger_id: data.trigger_id,
                 view: {
                     type: "modal",
-                    callback_id: `react_modal_${record.published_ts}_${data.message.ts}`,
+                    callback_id: react_modal_id({ published_ts: record.published_ts, thread_ts: data.message.ts }),
                     title: new PlainText(`Reacting to #${record.id}`).render(),
                     submit: new PlainText("React").render(),
                     close: new PlainText("Cancel").render(),

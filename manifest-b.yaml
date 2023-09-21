@@ -1,5 +1,5 @@
 display_information:
-  name: Prox2
+  name: prox2 testing b
   description: "Submit confessions to me anonymously. Type /prox2 in #confessions
     to get started!"
   background_color: "#1a49d6"
@@ -9,25 +9,25 @@ features:
     messages_tab_enabled: true
     messages_tab_read_only_enabled: false
   bot_user:
-    display_name: Prox2
+    display_name: prox2 testing b
     always_online: false
   shortcuts:
-    - name: React anonymously
-      type: message
-      callback_id: react_anonymous
-      description: React to a message anonymously
-    - name: Reply anonymously
+    - name: TEST Reply anonymously
       type: message
       callback_id: reply_anonymous
-      description: Reply to a message anonymously
+      description: TESTING Reply to a message anonymously
+    - name: TEST React anonymously
+      type: message
+      callback_id: react_anonymous
+      description: TESTING React to a message anonymously
   slash_commands:
-    - command: /prox2
-      url: https://prox2.vercel.app/api/prox2
+    - command: /test-b-prox2
+      url: https://leopard-pro-formally.ngrok-free.app/api/prox2
       description: Submit a confession anonymously
       usage_hint: "[message]"
       should_escape: true
-    - command: /prox2-revive
-      url: https://prox2.vercel.app/api/prox2_revive
+    - command: /test-b-prox2-revive
+      url: https://leopard-pro-formally.ngrok-free.app/api/prox2_revive
       description: Revives unviewed confessions
       should_escape: true
 oauth_config:
@@ -46,14 +46,13 @@ oauth_config:
       - groups:history
 settings:
   event_subscriptions:
-    request_url: https://prox2.vercel.app/api/events
+    request_url: https://leopard-pro-formally.ngrok-free.app/api/events
     bot_events:
       - message.im
   interactivity:
     is_enabled: true
-    request_url: https://prox2.vercel.app/api/interaction
-    message_menu_options_url: https://prox2.vercel.app/api/emoji_suggest
+    request_url: https://leopard-pro-formally.ngrok-free.app/api/interaction
+    message_menu_options_url: https://leopard-pro-formally.ngrok-free.app/api/emoji_suggest
   org_deploy_enabled: false
   socket_mode_enabled: false
   token_rotation_enabled: false
-  is_hosted: false

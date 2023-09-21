@@ -1,7 +1,8 @@
 import { BlockActionInteraction, InteractionHandler } from "../../pages/api/interaction_work";
-import { stageConfession, unviewConfession, viewConfession, web } from "../main";
+import { stageConfession, viewConfession, web } from "../main";
 import { Blocks, InputSection, MarkdownText, PlainText, PlainTextInput, TextSection } from "../block_builder";
 import getRepository from "../db";
+import { approve_tw_id, undo_confirm_id } from "./view_submission";
 
 const block_action: InteractionHandler<BlockActionInteraction> = async data => {
     console.log(`Block action!`);
@@ -27,7 +28,7 @@ const block_action: InteractionHandler<BlockActionInteraction> = async data => {
             const resp = await web.views.open({
                 trigger_id: data.trigger_id,
                 view: {
-                    callback_id: `approve_tw_${data.message.ts}`,
+                    callback_id: approve_tw_id(data.message.ts),
                     type: "modal",
                     title: new PlainText(`Approve with TW`).render(),
                     submit: new PlainText("Approve").render(),
@@ -84,15 +85,38 @@ const block_action: InteractionHandler<BlockActionInteraction> = async data => {
             break;
         }
         case "undo": {
-            console.log(`Undo staging of message thread_ts=${data.message.thread_ts}`);
-            console.log("DATA", JSON.stringify(data, null, 4));
-            console.log("DATA END");
-            // const message_contents = messages[0].text;
+            console.log(`Undo staging of message ts=${data.message.ts}`);
             const blocks = (data.message as any).blocks;
             const reviewer_uid =  (/by <@([A-Za-z0-9]+)>/g).exec(blocks[blocks.length - 2].text.text)?.[1] ?? "";
             const undoer_uid = data.user.id;
 
-            await unviewConfession(repo, data.message.ts, reviewer_uid, undoer_uid);
+            // await unviewConfession(repo, data.message.ts, reviewer_uid, undoer_uid);
+
+            const resp = await web.views.open({
+                trigger_id: data.trigger_id,
+                view: {
+                    callback_id: undo_confirm_id({
+                        ts: data.message.ts,
+                        reviewer_uid,
+                        undoer_uid
+                    }),
+                    type: "modal",
+                    title: new PlainText(`Undo confession review`).render(),
+                    submit: new PlainText("Undo").render(),
+                    close: new PlainText("Cancel").render(),
+                    blocks: new Blocks([
+                        // text
+                        new TextSection(
+                            new MarkdownText(
+                                "Undoing approval is undoable, however replies will not be preserved."
+                            )
+                        )
+                    ]).render()
+                }
+            });
+            if (!resp.ok) {
+                throw "Failed to open modal";
+            }
 
             break;
         }
