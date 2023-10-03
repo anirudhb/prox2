@@ -23,7 +23,8 @@
     "target": "esnext",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "incremental": true
+    "incremental": true,
+    "useUnknownInCatchVariables": false
   },
   "exclude": [
     "node_modules"

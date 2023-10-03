@@ -54,7 +54,7 @@ const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (da
                             new TextSection(
                                 new MarkdownText(
                                     "Failed to reply: \
-                You are not the original poster of the confession, so cannot reply anonymously.*"
+                You are not the original poster of the confession, so cannot reply anonymously."
                                 )
                             ).render(),
                         ],

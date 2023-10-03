@@ -2,7 +2,7 @@
   "name": "prox2",
   "version": "1.0.0",
   "scripts": {
-    "dev": "env NODE_OPTIONS=--openssl-legacy-provider next",
+    "dev": "next",
     "build": "next build",
     "start": "next start",
     "type-check": "tsc"
