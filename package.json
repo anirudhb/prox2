@@ -2,9 +2,9 @@
   "name": "prox2",
   "version": "1.0.0",
   "scripts": {
-    "dev": "next",
-    "build": "next build",
-    "start": "next start",
+    "dev": "env NODE_OPTIONS=--openssl-legacy-provider next",
+    "build": "env NODE_OPTIONS=--openssl-legacy-provider next build",
+    "start": "env NODE_OPTIONS=--openssl-legacy-provider next start",
     "type-check": "tsc"
   },
   "dependencies": {
