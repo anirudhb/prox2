@@ -1,6 +1,3 @@
-_metadata:
-  major_version: 1
-  minor_version: 1
 display_information:
   name: Prox2
   description: "Submit confessions to me anonymously. Type /prox2 in #confessions
@@ -42,9 +39,11 @@ oauth_config:
       - im:history
       - im:read
       - im:write
+      - mpim:write
       - reactions:write
       - users:read
-      - mpim:write
+      - channels:history
+      - groups:history
 settings:
   event_subscriptions:
     request_url: https://prox2.vercel.app/api/events
@@ -56,4 +55,5 @@ settings:
     message_menu_options_url: https://prox2.vercel.app/api/emoji_suggest
   org_deploy_enabled: false
   socket_mode_enabled: false
+  token_rotation_enabled: false
   is_hosted: false

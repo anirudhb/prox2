@@ -16,37 +16,22 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { In } from "typeorm";
 import { Block, KnownBlock } from "@slack/web-api";
 
 import {
   api_config,
   failRequest,
-  sameUser,
   setupMiddlewares,
-  stageConfession,
-  succeedRequest,
   validateNonce,
-  verifySignature,
-  viewConfession,
-  web,
+  verifySignature
 } from "../../lib/main";
-import { confessions_channel } from "../../lib/secrets_wrapper";
-import {
-  Blocks,
-  ExternalSelectAction,
-  InputSection,
-  MarkdownText,
-  PlainText,
-  PlainTextInput,
-  TextSection,
-} from "../../lib/block_builder";
-import getRepository from "../../lib/db";
-import { sanitize } from "../../lib/sanitizer";
+import block_action from "../../lib/interaction_handlers/block_action";
+import message_action from "../../lib/interaction_handlers/message_action";
+import view_submission from "../../lib/interaction_handlers/view_submission";
 
 export const config = api_config;
 
-interface BlockActionInteraction {
+export interface BlockActionInteraction {
   type: "block_actions";
   trigger_id: string;
   response_url: string;
@@ -72,7 +57,7 @@ interface BlockActionInteraction {
   hash: string;
 }
 
-interface MessageActionInteraction {
+export interface MessageActionInteraction {
   type: "message_action";
   callback_id: string;
   trigger_id: string;
@@ -92,7 +77,7 @@ interface MessageActionInteraction {
   token?: string;
 }
 
-interface ViewSubmissionInteraction {
+export interface ViewSubmissionInteraction {
   type: "view_submission";
   user: {
     id: string;
@@ -127,6 +112,8 @@ type SlackInteractionPayload =
       type: string;
     });
 
+export type InteractionHandler<T extends SlackInteractionPayload> = (data: T, res: NextApiResponse) => Promise<boolean>;
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -150,358 +137,34 @@ export default async function handler(
     return;
   }
   console.log(`Valid!`);
-  const repo = await getRepository();
+
   const data = JSON.parse(
     (req.body as { payload: string }).payload
   ) as SlackInteractionPayload;
   console.log(`Type = ${data.type}`);
-  if (data.type == "block_actions") {
-    console.log(`Block action!`);
-    if (data.actions.length > 0) {
-      const action = data.actions[0];
-      try {
-        if (action.value == "approve") {
-          console.log(`Approval of message ts=${data.message.ts}`);
-          await viewConfession(repo, data.message.ts, true, data.user.id);
-        } else if (action.value == "disapprove") {
-          console.log(`Disapproval of message ts=${data.message.ts}`);
-          await viewConfession(repo, data.message.ts, false, data.user.id);
-        } else if (action.value == "approve:tw") {
-          console.log(`Trigger Warning Approval!`);
-          try {
-            const resp = await web.views.open({
-              trigger_id: data.trigger_id,
-              view: {
-                callback_id: `approve_tw_${data.message.ts}`,
-                type: "modal",
-                title: new PlainText(`Approve with TW`).render(),
-                submit: new PlainText("Approve").render(),
-                close: new PlainText("Cancel").render(),
-                blocks: new Blocks([
-                  new InputSection(
-                    new PlainTextInput("approve_tw_input", true),
-                    new PlainText("TW"),
-                    "tw"
-                  ),
-                ]).render(),
-              },
-            });
-            if (!resp.ok) {
-              throw "Failed to open modal";
-            }
-          } catch (e) {
-            await failRequest(data.response_url, JSON.stringify(e));
-            res.writeHead(500).end();
-            return;
-          }
-        } else if (action.value == "stage") {
-          console.log(`Stage of message thread_ts=${data.message.thread_ts}`);
-          // Get message contents
-          const resp = await web.conversations.history({
-            channel: data.channel.id,
-            inclusive: true,
-            latest: data.message.thread_ts,
-            limit: 1,
-          });
-          if (!resp.ok) {
-            throw `Failed to fetch message contents!`;
-          }
-          const message_contents = (resp as any).messages[0].text;
-          // Stage
-          const id = await stageConfession(
-            repo,
-            message_contents,
-            data.user.id
-          );
-          // Edit
-          const resp2 = await web.chat.update({
-            channel: data.channel.id,
-            ts: data.message.ts,
-            text: "",
-            blocks: new Blocks([
-              new TextSection(
-                new MarkdownText(`:true: Staged as confession #${id}`),
-                null,
-                null
-              ),
-            ]).render(),
-          });
-          if (!resp2.ok) {
-            throw `Failed to update message!`;
-          }
-        } else if (action.value == "cancel") {
-          console.log(`Cancel of message thread_ts=${data.message.thread_ts}`);
-          const resp = await web.chat.delete({
-            channel: data.channel.id,
-            ts: data.message.ts,
-          });
-          if (!resp.ok) {
-            throw `Failed to delete message!`;
-          }
-        } else {
-          console.log(`Unknown value ${action.value}`);
-        }
-      } catch (e) {
-        await failRequest(data.response_url, e);
-        res.writeHead(500).end();
-        return;
-      }
-    } else {
-      console.log(`No action found`);
-    }
-  } else if (data.type == "message_action") {
-    console.log(`Message action!`);
+  const handler = {
+    "block_actions": block_action,
+    "message_action": message_action,
+    "view_submission": view_submission,
+  }[data.type];
+
+  if(!handler) {
+    console.log("Invalid interaction type!", data.type);
+  } else {
     try {
-      if (data.channel.id != confessions_channel) {
-        throw "Invalid channel ID";
-      }
-      if (data.callback_id == "reply_anonymous") {
-        // try to fetch record
-        const record = await repo.findOne({ published_ts: data.message.ts });
-        if (record === undefined) {
-          throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
-        }
-
-        // Check user...
-        if (!sameUser(record, data.user.id)) {
-          await succeedRequest(
-            data.response_url,
-            "You are not the original poster of the confession, so you cannot reply anonymously."
-          );
-          res.writeHead(200).end();
-          return;
-        }
-
-        const resp = await web.views.open({
-          trigger_id: data.trigger_id,
-          view: {
-            callback_id: `reply_modal_${record.published_ts}`,
-            type: "modal",
-            title: new PlainText(`Replying to #${record.id}`).render(),
-            submit: new PlainText("Reply").render(),
-            close: new PlainText("Cancel").render(),
-            blocks: new Blocks([
-              new InputSection(
-                new PlainTextInput("confession_reply", true),
-                new PlainText("Reply"),
-                "reply"
-              ),
-            ]).render(),
-          },
-        });
-        if (!resp.ok) {
-          throw "Failed to open modal";
-        }
-      } else if (data.callback_id == "react_anonymous") {
-        // try to fetch record
-        let valid_ts = [data.message.ts];
-        if (data.message.thread_ts !== undefined)
-          valid_ts.push(data.message.thread_ts);
-        const record = await repo.findOne({ published_ts: In(valid_ts) });
-        if (record === undefined) {
-          throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
-        }
-
-        // Check user...
-        if (!sameUser(record, data.user.id)) {
-          await succeedRequest(
-            data.response_url,
-            "You are not the original poster of the confession, so you cannot react anonymously."
-          );
-          res.writeHead(200).end();
-          return;
-        }
-
-        const modal_res = await web.views.open({
-          trigger_id: data.trigger_id,
-          view: {
-            type: "modal",
-            callback_id: `react_modal_${record.published_ts}_${data.message.ts}`,
-            title: new PlainText(`Reacting to #${record.id}`).render(),
-            submit: new PlainText("React").render(),
-            close: new PlainText("Cancel").render(),
-            blocks: new Blocks([
-              new TextSection(
-                new PlainText("Pick an emoji to react with"),
-                "emoji",
-                new ExternalSelectAction(
-                  new PlainText("Select an emoji"),
-                  2,
-                  "emoji"
-                )
-              ),
-            ]).render(),
-          },
-        });
-        if (!modal_res.ok) throw `Failed to open modal`;
-      } else {
-        console.log(`Unknown callback ${data.callback_id}`);
-      }
-    } catch (e) {
-      await failRequest(data.response_url, JSON.stringify(e));
-      res.writeHead(500).end();
-      return;
-    }
-  } else if (data.type == "view_submission") {
-    console.log(`View submission!`);
-    try {
-      if (data.view.callback_id.startsWith("reply_modal")) {
-        const published_ts_res = /^reply_modal_(.*)$/.exec(
-          data.view.callback_id
-        );
-        if (!published_ts_res) throw "Failed to exec regex";
-        const published_ts = published_ts_res[1];
-        if (!published_ts) throw "Failed to get regex group";
-
-        // try to fetch record
-        const record = await repo.findOne({ published_ts });
-        if (record === undefined) {
-          throw `Failed to find single Postgres record with published_ts=${published_ts}`;
-        }
-
-        // Check user...
-        if (!sameUser(record, data.user.id)) {
-          // update view
-          res.json({
-            response_action: "update",
-            view: {
-              ...data.view,
-              blocks: [
-                ...data.view.blocks,
-                new TextSection(
-                  new MarkdownText(
-                    "Failed to reply: \
-You are not the original poster of the confession, so cannot reply anonymously.*"
-                  )
-                ).render(),
-              ],
-            },
-          } as {
-            response_action: "update";
-            view: {
-              blocks: any[];
-            };
-          });
-          return;
-          // throw `Different user, cannot reply!`;
-        }
-
-        // quick assert for typeck
-        if (
-          data.view.state.values.reply.confession_reply.type !=
-          "plain_text_input"
-        )
-          return;
-
-        // Reply in thread
-        const r = await web.chat.postMessage({
-          channel: confessions_channel,
-          text: sanitize(data.view.state.values.reply.confession_reply.value),
-          thread_ts: published_ts,
-        });
-        if (!r.ok) throw `Failed to reply in thread`;
-      } else if (data.view.callback_id.startsWith("react_modal")) {
-        const published_ts_res = /^react_modal_(.*)_(.*)$/.exec(
-          data.view.callback_id
-        );
-        if (!published_ts_res) throw "Failed to exec regex";
-        const [published_ts, thread_ts] = [
-          published_ts_res[1],
-          published_ts_res[2],
-        ];
-        if (!published_ts || !thread_ts) throw "Failed to get regex group";
-
-        // try to fetch record
-        const record = await repo.findOne({ published_ts });
-        if (record === undefined) {
-          throw `Failed to find single Postgres record with published_ts=${published_ts}`;
-        }
-
-        // Check user...
-        if (!sameUser(record, data.user.id)) {
-          // update view
-          res.json({
-            response_action: "update",
-            view: {
-              ...data.view,
-              blocks: [
-                ...data.view.blocks,
-                new TextSection(
-                  new MarkdownText(
-                    "Failed to react: \
- *You are not the original poster of the confession, so cannot react anonymously.*"
-                  )
-                ).render(),
-              ],
-            },
-          } as {
-            response_action: "update";
-            view: {
-              blocks: any[];
-            };
-          });
-          return;
-          // throw `Different user, cannot reply!`;
-        }
-
-        // quick assert for typeck
-        if (data.view.state.values.emoji.emoji.type != "external_select")
-          return;
-
-        // React to message
-        const react_res = await web.reactions.add({
-          name: data.view.state.values.emoji.emoji.selected_option.value.replace(
-            /\:/g,
-            ""
-          ),
-          channel: confessions_channel,
-          timestamp: thread_ts,
-        });
-        if (!react_res.ok) throw `Failed to react`;
-      } else if (data.view.callback_id.startsWith("approve_tw")) {
-        const staging_ts_res = /^approve_tw_(.*)$/.exec(data.view.callback_id);
-        if (!staging_ts_res) throw "Failed to exec regex";
-        const staging_ts = staging_ts_res[1];
-        if (!staging_ts) throw "Failed to get regex group";
-
-        const record = await repo.findOne({ staging_ts });
-        if (record === undefined) {
-          throw `Failed to find single Postgres record with staging_ts=${staging_ts}`;
-        }
-
-        // quick assert for typeck
-        if (
-          data.view.state.values.tw.approve_tw_input.type != "plain_text_input"
-        )
-          return;
-
-        record.tw_text = data.view.state.values.tw.approve_tw_input.value;
-        await repo.save(record);
-
-        await viewConfession(
-          repo,
-          staging_ts,
-          true,
-          data.user.id,
-          data.view.state.values.tw.approve_tw_input.value
-        );
-
-        const updatedRecord = await repo.findOne({ staging_ts });
-
-        // Reply in thread
-        const r = await web.chat.postMessage({
-          channel: confessions_channel,
-          text: sanitize(updatedRecord!.text),
-          thread_ts: updatedRecord?.published_ts,
-        });
-        if (!r.ok) throw `Failed to reply in thread`;
-      }
+      console.log("Handling interaction", data.type);
+      //@ts-expect-error
+      if(!await handler(data, res)) return;
     } catch (e) {
       console.log(e);
+      if(data.type !== "view_submission") {
+        await failRequest(data.response_url, typeof e === "string" ? e : JSON.stringify(e));
+      }
       res.writeHead(500).end();
       return;
     }
   }
+
   console.log(`Request success`);
   res.writeHead(204).end();
 }
