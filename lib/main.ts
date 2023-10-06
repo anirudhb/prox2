@@ -204,7 +204,7 @@ export async function stageDMConfession(
   console.log(`Posting confirmation message...`);
   const confirmation_message = await web.chat.postMessage({
     channel: uid,
-    text: "",
+    text: "Would you like to stage this confession?",
     thread_ts: message_ts,
     reply_broadcast: true,
     blocks: new Blocks([
@@ -445,7 +445,7 @@ export async function viewConfession(
         new TextSection(new MarkdownText(statusText)),
         new ActionsSection([
             new ButtonAction(
-                new PlainText(":oops: Undo"),
+                new PlainText(":rewind: Undo"),
                 "undo",
                 "undo"
             )
@@ -549,7 +549,7 @@ export async function unviewConfession(
 
   // Log undo
   console.log(`Logging undo...`);
-  const log_message_text = `:oops: ${old_approved ? "Approval" : "Rejection"} (by <@${reviewer_uid}>) of confession #${record.id} undone by <@${undoer_uid}>`;
+  const log_message_text = `:rewind: ${old_approved ? "Approval" : "Rejection"} (by <@${reviewer_uid}>) of confession #${record.id} undone by <@${undoer_uid}>`;
   const log_message = await web.chat.postMessage({
     channel: staging_channel,
     text: "",

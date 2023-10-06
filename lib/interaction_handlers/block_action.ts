@@ -92,28 +92,43 @@ const block_action: InteractionHandler<BlockActionInteraction> = async data => {
 
             // await unviewConfession(repo, data.message.ts, reviewer_uid, undoer_uid);
 
-            const resp = await web.views.open({
-                trigger_id: data.trigger_id,
-                view: {
-                    callback_id: undo_confirm_id({
-                        ts: data.message.ts,
-                        reviewer_uid,
-                        undoer_uid
-                    }),
-                    type: "modal",
-                    title: new PlainText(`Undo confession review`).render(),
-                    submit: new PlainText("Undo").render(),
-                    close: new PlainText("Cancel").render(),
-                    blocks: new Blocks([
-                        // text
-                        new TextSection(
-                            new MarkdownText(
-                                "Undoing approval is undoable, however replies will not be preserved."
+            const resp = Number(new Date()) - Number(data.message.edited?.ts ?? data.message.ts) * 1000 > /* 1 week */ 7 * 24 * 60 * 60 * 1000
+                ? await web.views.open({
+                    trigger_id: data.trigger_id,
+                    view: {
+                        type: "modal",
+                        title: new PlainText(`Undo confession review`).render(),
+                        close: new PlainText("Close").render(),
+                        blocks: new Blocks([
+                            new TextSection(
+                                new MarkdownText(
+                                    "It has been a week since the review of this confession, so you can not undo it."
+                                )
                             )
-                        )
-                    ]).render()
-                }
-            });
+                        ]).render()
+                    }
+                }) : await web.views.open({
+                    trigger_id: data.trigger_id,
+                    view: {
+                        callback_id: undo_confirm_id({
+                            ts: data.message.ts,
+                            reviewer_uid,
+                            undoer_uid
+                        }),
+                        type: "modal",
+                        title: new PlainText(`Undo confession review`).render(),
+                        submit: new PlainText("Undo").render(),
+                        close: new PlainText("Cancel").render(),
+                        blocks: new Blocks([
+                            // text
+                            new TextSection(
+                                new MarkdownText(
+                                    "Undoing approval is undoable, however replies will not be preserved."
+                                )
+                            )
+                        ]).render()
+                    }
+                });
             if (!resp.ok) {
                 throw "Failed to open modal";
             }
