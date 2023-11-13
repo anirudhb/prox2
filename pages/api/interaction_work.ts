@@ -47,6 +47,10 @@ export interface BlockActionInteraction {
     text: string;
     ts: string;
     thread_ts?: string;
+    edited?: {
+      user: string;
+      ts: string;
+    }
   };
   actions: {
     block_id: string;

@@ -7,13 +7,19 @@ import { confessions_channel } from "../secrets_wrapper";
 import { sanitize } from "../sanitizer";
 import getRepository from "../db";
 
-const make_dialog = <T>(name: string): [(d: T) => string, (f: ((d: T) => Promise<boolean>)) => (id: string) => Promise<boolean | null>] => [
+const make_dialog = <T>(name: string): [(d: T) => string, (f: ((d: T | string[]) => Promise<boolean>)) => (id: string) => Promise<boolean | null>] => [
     // generate callback id
     d => `${name}_${btoa(JSON.stringify(d))}`,
     // callback handler
     f => async id => {
         if(!id.startsWith(name)) return null;
-        return await f(JSON.parse(atob(id.slice(name.length + 1))) as T);
+        const data = id.slice(name.length + 1);
+        try {
+            return await f(JSON.parse(atob(data)) as T);
+        } catch(_) {
+            // old format
+            return await f(data.split("_"));
+        }
     }
 ];
 
@@ -36,6 +42,9 @@ const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (da
     // todo passthrough return
     const dialogs = [
         reply_modal_handler(async (published_ts) => {
+            if(Array.isArray(published_ts)) {
+                published_ts = published_ts[0];
+            }
             const repo = await getRepository();
             const record = await repo.findOne({ published_ts });
             if (record === undefined) {
@@ -86,7 +95,14 @@ const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (da
             return true;
         }),
 
-        react_modal_handler(async ({ published_ts, thread_ts }) => {
+        react_modal_handler(async (args) => {
+            if(Array.isArray(args)) {
+                args = {
+                    published_ts: args[0],
+                    thread_ts: args[1]
+                };
+            }
+            const { published_ts, thread_ts } = args;
             // try to fetch record
             const repo = await getRepository();
             const record = await repo.findOne({ published_ts });
@@ -139,6 +155,9 @@ const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (da
         }),
 
         approve_tw_handler(async (staging_ts) => {
+            if(Array.isArray(staging_ts)) {
+                staging_ts = staging_ts[0];
+            }
             const repo = await getRepository();
             const record = await repo.findOne({ staging_ts });
             if (record === undefined) {
@@ -174,7 +193,11 @@ const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (da
             return true;
         }),
 
-        undo_confirm_handler(async ({ ts, reviewer_uid, undoer_uid }) => {
+        undo_confirm_handler(async (args) => {
+            if(Array.isArray(args)) {
+                throw `undo_confirm_handler is old format!`;
+            }
+            const { ts, reviewer_uid, undoer_uid } = args;
             const repo = await getRepository();
             await unviewConfession(repo, ts, reviewer_uid, undoer_uid);
             return true;
