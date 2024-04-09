@@ -47,6 +47,10 @@ const block_action: InteractionHandler<BlockActionInteraction> = async data => {
             }
             break;
         }
+        case "approve:hq": {
+            await viewConfession(repo, data.message.ts, true, data.user.id, null, true);
+            break;
+          }         
         case "stage": {
             console.log(`Stage of message thread_ts=${data.message.thread_ts}`);
             // Get message contents

@@ -34,6 +34,7 @@ import {
   staging_channel,
   confessions_channel,
   slack_signing_secret,
+  meta_channel,
 } from "./secrets_wrapper";
 import {
   ActionsSection,
@@ -304,6 +305,11 @@ const getStagingMessageBlocks = (id: number, text: string) => new Blocks([
         "approve:tw",
         "approve:tw"
     ),
+    new ButtonAction(
+        new PlainText(":office: Approve for HQ"),
+        "approve:hq",
+        "approve:hq"
+    ),
   ]),
 ]).render();
 
@@ -377,7 +383,8 @@ export async function viewConfession(
   staging_ts: string,
   approved: boolean,
   reviewer_uid: string,
-  tw_text: string | null = null
+  tw_text: string | null = null,
+  isHQ: boolean = false
 ): Promise<void> {
   console.log(
     `${
@@ -403,10 +410,11 @@ export async function viewConfession(
   }
   // Publish record and update
   let ts = null;
+  let targetChannel = isHQ ? meta_channel : confessions_channel;
   if (approved) {
     console.log(`Publishing message...`);
     const published_message = await web.chat.postMessage({
-      channel: confessions_channel,
+      channel: targetChannel,
       text: sanitize(
         `*${record.id}*:${tw_text ? " TW:" : ""} ${tw_text ?? record.text} ${
           tw_text?.trim() ? "— open thread to view" : ""
