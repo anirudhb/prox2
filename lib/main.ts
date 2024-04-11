@@ -19,7 +19,7 @@ import "source-map-support/register";
 import crypto from "crypto";
 import https from "https";
 
-import { Repository } from "typeorm";
+import { LessThanOrEqual, Repository } from "typeorm";
 import { WebClient, ErrorCode } from "@slack/web-api";
 import body_parser from "body-parser";
 
@@ -33,6 +33,7 @@ import {
   token,
   staging_channel,
   confessions_channel,
+  meta_channel,
   slack_signing_secret,
 } from "./secrets_wrapper";
 import {
@@ -565,6 +566,63 @@ export async function unviewConfession(
   }
 }
 
+export async function deleteInactiveRecords(
+  repository: Repository<Confession>,
+  record: Confession,
+): Promise<boolean> {
+  const now = new Date();
+  const weekAgo = now.setDate(now.getDate() - 7) / 1000;
+  const old_published_ts = record.published_ts;
+  if (!old_published_ts) {
+    console.log(`Deleting the records that are staged and dead...`);
+    try {
+      await repository.delete(record.id);
+      return true;
+    } catch (_) {
+      throw `Failed to update Postgres record`;
+    }
+  } else if (old_published_ts) {
+    console.log(`Deleting entires which are dead, but were published...`);
+    const thread_messages = await web.conversations.replies({
+      channel: confessions_channel,
+      ts: record.staging_ts as string,
+      limit: 1,
+      latest: "now"
+    });
+
+    if (thread_messages.messages) {
+      const message = thread_messages.messages[0];
+      try {
+        if (!message.latest_reply) {
+          try {
+            await repository.delete(record.id);
+            return true;
+          } catch (_) {
+            throw `Failed to update Postgres record`;
+          }
+        } else {
+          const ts_to_date = new Date(parseFloat(message.latest_reply));
+
+          if (now.getTime() - ts_to_date.getTime() / 1000 >= weekAgo) {
+            try {
+              await repository.delete(record.id);
+              return true;
+            } catch (_) {
+              throw `Failed to update Postgres record`;
+            }
+          }
+        }
+      } catch (error) {
+        console.log(`Failed to process message: ${error}`);
+      }
+    }
+    if (!thread_messages.ok) {
+      throw `Failed to fetch thread messages`;
+    }
+  }
+  return false;
+}
+
 export function verifySignature(req: NextApiRequest): boolean {
   const timestamp = req.headers["x-slack-request-timestamp"];
   if (timestamp == undefined || typeof timestamp != "string") {
@@ -653,5 +711,39 @@ export async function validateNonce(req: NextApiRequest) {
     !crypto.timingSafeEqual(Buffer.from(my_nonce), Buffer.from(nonce as string))
   ) {
     throw `Nonces are not equal!`;
+  }
+}
+
+export async function fetchRecords(repository: Repository<Confession>) {
+  let repo = repository;
+  let recordsFetched;
+  console.log("Iterating through the records!");
+  try {
+    const now = new Date();
+    const weekAgo = now.setDate(now.getDate() - 7) / 1000;
+    recordsFetched = await repository.find({
+      where: [
+        {
+          staging_ts: LessThanOrEqual(weekAgo),
+        },
+      ],
+    });
+    let len = 0;
+    for (const record of recordsFetched) {
+      const resp = await deleteInactiveRecords(repo, record);
+      if (resp) {
+        len+=1;
+      }
+    }
+    const confirmation_message = await web.chat.postMessage({
+      channel: meta_channel,
+      text: `Deleted ${len} inactive records from the database!`,
+    });
+    if (!confirmation_message.ok) {
+      console.log(`Failed to post log message!`);
+      throw `Failed to post log message!`;
+    }
+  } catch (_) {
+    throw `Failed to fetch Postgres record!`;
   }
 }
