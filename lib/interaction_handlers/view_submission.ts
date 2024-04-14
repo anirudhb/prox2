@@ -3,7 +3,7 @@
 import { InteractionHandler, ViewSubmissionInteraction } from "../../pages/api/interaction_work";
 import { sameUser, unviewConfession, viewConfession, web } from "../main";
 import { MarkdownText, TextSection } from "../block_builder";
-import { confessions_channel } from "../secrets_wrapper";
+import { confessions_channel, meta_channel } from "../secrets_wrapper";
 import { sanitize } from "../sanitizer";
 import getRepository from "../db";
 
@@ -87,7 +87,7 @@ const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (da
 
             // Reply in thread
             const r = await web.chat.postMessage({
-                channel: confessions_channel,
+                channel: record.meta ? meta_channel : confessions_channel,
                 text: sanitize(data.view.state.values.reply.confession_reply.value),
                 thread_ts: published_ts,
             });
@@ -147,7 +147,7 @@ const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (da
                     /\:/g,
                     ""
                 ),
-                channel: confessions_channel,
+                channel: record.meta ? meta_channel : confessions_channel,
                 timestamp: thread_ts,
             });
             if (!react_res.ok) throw `Failed to react`;
@@ -185,6 +185,7 @@ const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (da
 
             // Reply in thread
             const r = await web.chat.postMessage({
+                // NOTE: no TWs for meta approvals
                 channel: confessions_channel,
                 text: sanitize(updatedRecord!.text),
                 thread_ts: updatedRecord?.published_ts,
