@@ -10,7 +10,7 @@ export class Confession {
   @Column()
   viewed?: boolean;
   // Whether "Approve for meta" was selected instead of "Approve"
-  @Column()
+  @Column({ nullable: true })
   meta?: boolean;
 
   @Column("text")
