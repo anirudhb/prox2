@@ -1,4 +1,4 @@
-import { confessions_channel } from "../secrets_wrapper";
+import { confessions_channel, meta_channel } from "../secrets_wrapper";
 import { sameUser, succeedRequest, web } from "../main";
 import { Blocks, ExternalSelectAction, InputSection, PlainText, PlainTextInput, TextSection } from "../block_builder";
 import { In } from "typeorm";
@@ -7,7 +7,7 @@ import getRepository from "../db";
 import { react_modal_id, reply_modal_id } from "./view_submission";
 
 const message_action: InteractionHandler<MessageActionInteraction> = async (data, res) => {
-    if (data.channel.id != confessions_channel) {
+    if (data.channel.id != confessions_channel && data.channel.id != meta_channel) {
         throw "Invalid channel ID";
     }
     switch(data.callback_id) {
@@ -64,6 +64,14 @@ const message_action: InteractionHandler<MessageActionInteraction> = async (data
                 throw `Failed to find single Postgres record with published_ts=${data.message.ts}`;
             }
 
+            if (record.meta) {
+                await succeedRequest(
+                    data.response_url,
+                    "Anonymous reactions are not allowed on meta confessions."
+                );
+                res.writeHead(200).end();
+                return false;
+            }
             // Check user...
             if (!sameUser(record, data.user.id)) {
                 await succeedRequest(
