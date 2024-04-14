@@ -574,15 +574,17 @@ export async function deleteInactiveRecords(
   const weekAgo = now.setDate(now.getDate() - 7) / 1000;
   const old_published_ts = record.published_ts;
   if (!old_published_ts) {
-    console.log(`Deleting the records that are staged and dead...`);
+    console.log(`Deleting salt and hashes for the records that are staged and dead...`);
     try {
-      await repository.delete(record.id);
+      record.uid_salt = "empty"
+      record.uid_hash = "empty hash";
+      await repository.save(record);
       return true;
     } catch (_) {
       throw `Failed to update Postgres record`;
     }
   } else if (old_published_ts) {
-    console.log(`Deleting entires which are dead, but were published...`);
+    console.log(`Deleting the salt and hashes which are dead, but were published...`);
     const thread_messages = await web.conversations.replies({
       channel: confessions_channel,
       ts: record.staging_ts as string,
@@ -595,7 +597,9 @@ export async function deleteInactiveRecords(
       try {
         if (!message.latest_reply) {
           try {
-            await repository.delete(record.id);
+            record.uid_salt = "empty"
+            record.uid_hash = "empty hash";
+            await repository.save(record);
             return true;
           } catch (_) {
             throw `Failed to update Postgres record`;
@@ -605,7 +609,9 @@ export async function deleteInactiveRecords(
 
           if (now.getTime() - ts_to_date.getTime() / 1000 >= weekAgo) {
             try {
-              await repository.delete(record.id);
+              record.uid_salt = "empty"
+              record.uid_hash = "empty hash";
+              await repository.save(record);
               return true;
             } catch (_) {
               throw `Failed to update Postgres record`;
@@ -737,7 +743,7 @@ export async function fetchRecords(repository: Repository<Confession>) {
     }
     const confirmation_message = await web.chat.postMessage({
       channel: meta_channel,
-      text: `Deleted ${len} inactive records from the database!`,
+      text: `Set salt and hashes to empty and empty hash respectively for ${len} inactive records from the database!`,
     });
     if (!confirmation_message.ok) {
       console.log(`Failed to post log message!`);
