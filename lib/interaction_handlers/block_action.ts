@@ -47,7 +47,7 @@ const block_action: InteractionHandler<BlockActionInteraction> = async data => {
             }
             break;
         }
-        case "approve:hq": {
+        case "approve:meta": {
             await viewConfession(repo, data.message.ts, true, data.user.id, null, true);
             break;
           }         

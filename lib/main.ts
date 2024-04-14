@@ -306,9 +306,9 @@ const getStagingMessageBlocks = (id: number, text: string) => new Blocks([
         "approve:tw"
     ),
     new ButtonAction(
-        new PlainText(":office: Approve for HQ"),
-        "approve:hq",
-        "approve:hq"
+        new PlainText(":office: Approve for meta"),
+        "approve:meta",
+        "approve:meta"
     ),
   ]),
 ]).render();
@@ -384,7 +384,7 @@ export async function viewConfession(
   approved: boolean,
   reviewer_uid: string,
   tw_text: string | null = null,
-  isHQ: boolean = false
+  isMeta: boolean = false
 ): Promise<void> {
   console.log(
     `${
@@ -410,11 +410,11 @@ export async function viewConfession(
   }
   // Publish record and update
   let ts = null;
-  let targetChannel = isHQ ? meta_channel : confessions_channel;
+  const target_channel = isMeta ? meta_channel : confessions_channel;
   if (approved) {
     console.log(`Publishing message...`);
     const published_message = await web.chat.postMessage({
-      channel: targetChannel,
+      channel: target_channel,
       text: sanitize(
         `*${record.id}*:${tw_text ? " TW:" : ""} ${tw_text ?? record.text} ${
           tw_text?.trim() ? "— open thread to view" : ""
@@ -429,6 +429,7 @@ export async function viewConfession(
   }
   console.log(`Updating Postgres record...`);
   try {
+    record.meta = isMeta;
     record.approved = approved;
     record.viewed = true;
     record.published_ts = ts ?? "";
@@ -440,7 +441,7 @@ export async function viewConfession(
   console.log(`Updating staging message...`);
   try {
     const statusText = `${
-      approved ? `:true: Approved` : `:x: Rejected`
+      approved ? `:true: Approved${isMeta ? ' for meta' : ''}` : `:x: Rejected`
     } by <@${reviewer_uid}> <!date^${Math.floor(
       Date.now() / 1000
     )}^{date_short_pretty} at {time}|${new Date().toISOString()}>.`;
@@ -474,6 +475,8 @@ export async function unviewConfession(
     reviewer_uid: string,
     undoer_uid: string
 ): Promise<void> {
+  // FIXME: staging_ts race condition? e.g. two messages in confessions/meta
+  // both with the same staging_ts
   console.log(`Unviewing confession with staging_ts=${staging_ts}...`);
   // Check if message is in Postgres
   let record;
@@ -508,8 +511,9 @@ export async function unviewConfession(
   // delete the message in confessions channel (and responses in thread if they exist)
   if(old_approved && old_published_ts) {
     console.log(`Deleting thread messages in confessions channel...`);
+    const target_channel = record.meta ? meta_channel : confessions_channel;
     const thread_messages = await web.conversations.replies({
-        channel: confessions_channel,
+        channel: target_channel,
         ts: old_published_ts
     });
     if (!thread_messages.ok) {
@@ -522,7 +526,7 @@ export async function unviewConfession(
         try {
           if(!message.ts) break;
           await web.chat.delete({
-              channel: confessions_channel,
+              channel: target_channel,
               ts: message.ts
           });
         } catch (_) {
@@ -557,7 +561,7 @@ export async function unviewConfession(
 
   // Log undo
   console.log(`Logging undo...`);
-  const log_message_text = `:rewind: ${old_approved ? "Approval" : "Rejection"} (by <@${reviewer_uid}>) of confession #${record.id} undone by <@${undoer_uid}>`;
+  const log_message_text = `:rewind: ${old_approved ? `Approval${record.meta ? ' for meta' : ''}` : "Rejection"} (by <@${reviewer_uid}>) of confession #${record.id} undone by <@${undoer_uid}>`;
   const log_message = await web.chat.postMessage({
     channel: staging_channel,
     text: "",

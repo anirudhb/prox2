@@ -9,6 +9,9 @@ export class Confession {
   approved?: boolean;
   @Column()
   viewed?: boolean;
+  // Whether "Approve for meta" was selected instead of "Approve"
+  @Column()
+  meta?: boolean;
 
   @Column("text")
   text!: string;
