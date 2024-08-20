@@ -3,7 +3,7 @@
 import { InteractionHandler, ViewSubmissionInteraction } from "../../pages/api/interaction_work";
 import { sameUser, unviewConfession, viewConfession, web } from "../main";
 import { MarkdownText, TextSection } from "../block_builder";
-import { confessions_channel, meta_channel } from "../secrets_wrapper";
+import { confessions_channel, confessions_meta_channel, meta_channel } from "../secrets_wrapper";
 import { sanitize } from "../sanitizer";
 import getRepository from "../db";
 
@@ -38,9 +38,45 @@ export const [undo_confirm_id, undo_confirm_handler] = make_dialog<{
     undoer_uid: string
 }>("undo_confirm");
 
+export const [reject_id, reject_handler] = make_dialog<string>("reject");
+
 const view_submission: InteractionHandler<ViewSubmissionInteraction> = async (data, res) => {
     // todo passthrough return
     const dialogs = [
+        reject_handler(async (staging_ts) => {
+            if (Array.isArray(staging_ts)) {
+              staging_ts = staging_ts[0];
+            }
+            const repo = await getRepository();
+            const record = await repo.findOne({ staging_ts });
+            if (record === undefined) {
+              throw `Failed to find single Postgres record with staging_ts=${staging_ts}`;
+            }
+
+            // quick assert for typeck
+            if (
+              data.view.state.values.reason.reject_input.type !=
+              "plain_text_input"
+            )
+              return false;
+
+
+            await viewConfession(
+              repo,
+              staging_ts,
+              false,
+              data.user.id,
+              data.view.state.values.reason.reject_input.value
+            );
+
+            const r = await web.chat.postMessage({
+              channel: confessions_meta_channel,
+              text: `*rejected #${record.id}:* ${data.view.state.values.reason.reject_input.value}`,
+            });
+            if (!r.ok) throw `Failed to send reject message`;
+            return true;
+        }),
+
         reply_modal_handler(async (published_ts) => {
             if(Array.isArray(published_ts)) {
                 published_ts = published_ts[0];
