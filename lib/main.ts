@@ -35,6 +35,7 @@ import {
   confessions_channel,
   slack_signing_secret,
   meta_channel,
+  log_channel,
 } from "./secrets_wrapper";
 import {
   ActionsSection,
@@ -466,6 +467,7 @@ export async function viewConfession(
     console.log(JSON.stringify(e));
     throw `Failed to update staging message`;
   }
+  await postConfessionLog(record.id, { type: "view", approved: record.approved, meta: record.meta });
   console.log(`Deleted!`);
 }
 
@@ -575,6 +577,43 @@ export async function unviewConfession(
     console.log(`Failed to post log message!`);
     throw `Failed to post log message!`;
   }
+
+  await postConfessionLog(record.id, { type: "undo" });
+}
+
+export async function postConfessionLog(
+  id: number,
+  action: {
+    type: "view";
+    approved: boolean;
+    meta?: boolean;
+  } | {
+    type: "undo";
+  },
+): Promise<void> {
+  if (log_channel == null) return;
+
+  let actionText;
+  if (action.type == "view") {
+    actionText = action.approved ? action.meta ? "approved for meta" : "approved" : "rejected";
+  } else if (action.type == "undo") {
+    actionText = "unapproved";
+  }
+
+  const logText = `Confession *#${id}* was *${actionText}*`;
+  console.log(`Sending message to log channel...`);
+  try {
+    await web.chat.postMessage({
+      channel: log_channel,
+      text: logText,
+    });
+  } catch (e) {
+    console.log(`Failed to send log message!`);
+    console.log(JSON.stringify(e));
+    // non-fatal error
+    return;
+  }
+  console.log(`Sent!`);
 }
 
 export function verifySignature(req: NextApiRequest): boolean {
