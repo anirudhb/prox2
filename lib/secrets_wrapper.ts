@@ -25,6 +25,7 @@ export let airtable_base: string | null;
 export let staging_channel: string;
 export let confessions_channel: string;
 export let meta_channel: string;
+export let log_channel: string | null;
 export let slack_signing_secret: string;
 export let postgres_url: string;
 
@@ -48,6 +49,7 @@ try {
   staging_channel = secrets.staging_channel;
   confessions_channel = secrets.confessions_channel;
   meta_channel = secrets.meta_channel;
+  log_channel = secrets.log_channel ?? null;
   slack_signing_secret = secrets.slack_signing_secret;
   postgres_url = secrets.postgres_url;
   airtable_api_key = secrets.airtable_api_key ?? null;
@@ -57,6 +59,7 @@ try {
   staging_channel = check_env("STAGING_CHANNEL_ID");
   confessions_channel = check_env("CONFESSIONS_CHANNEL_ID");
   meta_channel = check_env("META_CHANNEL_ID");
+  log_channel = check_null_env("LOG_CHANNEL_ID");
   slack_signing_secret = check_env("SLACK_SIGNING_SECRET");
   postgres_url = check_env("POSTGRES_URL");
   airtable_api_key = null;
