@@ -241,8 +241,17 @@ export async function reviveConfessions(repository: Repository<Confession>) {
   }
   for (const record of unviewedConfessions) {
     console.log(`Removing old message (if any) and ignoring errors...`);
+    let previousLink = null;
     if (record.staging_ts) {
       try {
+        const replies = await web.conversations.replies({
+          channel: staging_channel,
+          ts: record.staging_ts,
+        });
+        if (replies.ok && replies?.messages?.[1].ts) {
+          const message_ts = replies.messages[1].ts;
+          previousLink = `https://slack.com/archives/${staging_channel}/p${message_ts.replace(".","")}?thread_ts=${record.staging_ts}`;
+        }
         await web.chat.delete({
           channel: staging_channel,
           ts: record.staging_ts,
@@ -265,6 +274,18 @@ export async function reviveConfessions(repository: Repository<Confession>) {
         console.log(`Failed to post staging message... rethrowing error`);
         throw err;
       }
+    }
+    try {
+      if (newTs != null && previousLink != null) {
+        await web.chat.postMessage({
+          channel: staging_channel,
+          text: `<${previousLink}|View previous replies>`,
+          thread_ts: newTs,
+          unfurl_links: false,
+        });
+      }
+    } catch (e) {
+      console.log(`Failed to post previous replies link! Continuing...`);
     }
     console.log(`Updating record...`);
     try {
